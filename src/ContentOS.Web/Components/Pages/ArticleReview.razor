@@ -1,0 +1,369 @@
+@page "/article-review/{JobId:guid}"
+
+@using ContentOS.Application.Abstractions
+@using ContentOS.Application.Commands
+@using ContentOS.Application.DTOs
+@using ContentOS.Application.Queries
+@using ContentOS.Domain.Entities
+@using ContentOS.Domain.Enums
+@using MediatR
+@inject IMediator Mediator
+@inject ILogger<ArticleReview> Logger
+@inject IWorkflowControlService WorkflowControlService
+
+<PageTitle>@(Assembly?.Title ?? "Article Review") | ContentOS</PageTitle>
+
+<div class="mission-control-container">
+    <div class="crumb-row">
+        <span>Home</span>
+        <span class="crumb-sep">›</span>
+        <span>Article Review</span>
+    </div>
+
+    <div class="page-header-row">
+        <div>
+            <h1 class="page-title">FINAL ARTICLE</h1>
+            <p class="page-subtitle">One page for final content, SEO, QA, and review actions.</p>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <div class="workflow-task-error-banner">@Error</div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(ActionMessage))
+    {
+        <div class="status-badge status-approved" style="margin-bottom:1rem; display:inline-flex;">@ActionMessage</div>
+    }
+    else if (!string.IsNullOrWhiteSpace(ActionError))
+    {
+        <div class="workflow-task-error-banner">@ActionError</div>
+    }
+
+    @if (Assembly is null)
+    {
+        <div class="empty-card">Loading article review...</div>
+    }
+    else
+    {
+        <section class="dashboard-card compact-card article-review-action-bar-card">
+            <div class="article-review-action-bar">
+                <div class="article-review-action-context">
+                    <div class="editor-side-title">Final Approval</div>
+                    <p>Use this surface to approve the article or send it back for another pass.</p>
+                </div>
+                <div class="article-review-action-buttons">
+                    <button class="btn-primary" @onclick="ApproveAsync" disabled="@IsActing">Approve Article</button>
+                    <button class="btn-secondary" @onclick="RejectAsync" disabled="@IsActing">Send Back</button>
+                    <button class="btn-secondary" @onclick="RerunDraftAsync" disabled="@IsActing">Rerun Draft</button>
+                    <button class="btn-secondary" @onclick="RerunSeoAsync" disabled="@IsActing">Rerun SEO</button>
+                    <button class="btn-secondary" @onclick="RerunQaAsync" disabled="@IsActing">Rerun QA</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="dashboard-card compact-card qa-review-banner article-review-summary-band">
+            <div class="qa-review-header">
+                <div class="qa-review-status-group">
+                    <h2 class="page-title" style="margin-bottom:0">QA Review</h2>
+                    <span class="status-badge @(Assembly.QaPassed ? "status-approved" : "status-danger")">@(Assembly.QaPassed ? "PASSED" : "FAILED")</span>
+                    <span class="status-badge @(Assembly.PublishReady ? "status-approved" : "status-pending")">@(Assembly.PublishReady ? "PUBLISH READY" : "HOLD")</span>
+                    <span class="status-badge status-pending">@Assembly.WorkflowStatus</span>
+                </div>
+                <div class="qa-review-score-group">
+                    @if (Assembly.QaScore.HasValue)
+                    {
+                        <div class="optimization-score-card" style="margin-bottom:0; min-width: 220px;">
+                            <div>
+                                <div class="optimization-score-label">QA Score</div>
+                                <div class="optimization-score-value">@Assembly.QaScore.Value.ToString("0.0")<span>/10</span></div>
+                            </div>
+                            <div class="optimization-score-meter">
+                                <div class="optimization-score-fill @(Assembly.QaScore.Value >= 7 ? "optimization-score-strong" : Assembly.QaScore.Value >= 5 ? "optimization-score-medium" : "optimization-score-weak")" style="width:@($"{Math.Min(100, Assembly.QaScore.Value * 10)}%")"></div>
+                            </div>
+                        </div>
+                    }
+                    <div class="qa-review-meta">
+                        <span><strong>@Assembly.EstimatedWordCount</strong><small>words</small></span>
+                        <span><strong>@Assembly.EstimatedReadTimeMinutes</strong><small>min read</small></span>
+                        <span><strong>@(Assembly.Content?.Sections?.Count ?? 0)</strong><small>sections</small></span>
+                    </div>
+                </div>
+            </div>
+
+            @if (Assembly.QaFeedback?.Any() == true)
+            {
+                <div class="qa-review-feedback">
+                    <div class="editor-side-title">QA Feedback</div>
+                    <ul class="artifact-list">
+                        @foreach (var item in Assembly.QaFeedback)
+                        {
+                            <li>@item</li>
+                        }
+                    </ul>
+                </div>
+            }
+
+            @if (Assembly.QaHardRuleFailures?.Any() == true)
+            {
+                <div class="qa-review-failures">
+                    <div class="editor-side-title" style="color:var(--danger, #ef4444)">Hard Rule Failures</div>
+                    <ul class="artifact-list">
+                        @foreach (var item in Assembly.QaHardRuleFailures)
+                        {
+                            <li style="color:var(--danger, #ef4444)">@item</li>
+                        }
+                    </ul>
+                </div>
+            }
+        </section>
+
+        <section class="dashboard-card compact-card final-editor-shell article-review-main-shell">
+            <div class="editor-layout article-review-layout">
+                <div class="editor-main-pane article-review-content-pane">
+                    <div class="widget-title">Final Article</div>
+                    <div class="editor-top-strip">
+                        <div class="editor-pill-row">
+                            @if (!string.IsNullOrWhiteSpace(Assembly.ContentType))
+                            {
+                                <span class="editor-pill">@Assembly.ContentType.Replace("Article", string.Empty, StringComparison.Ordinal)</span>
+                            }
+                            <span class="editor-pill editor-pill-muted">@Assembly.Slug</span>
+                        </div>
+                        <div class="editor-status-box">
+                            <span class="label">Status</span>
+                            <strong>@Assembly.WorkflowStatus</strong>
+                        </div>
+                    </div>
+
+                    <div class="editor-header-fields">
+                        <label class="editor-field">
+                            <span class="label">Title</span>
+                            <input value="@Assembly.Title" readonly />
+                        </label>
+                        <label class="editor-field">
+                            <span class="label">Slug</span>
+                            <input value="@Assembly.Slug" readonly />
+                        </label>
+                        <label class="editor-field full-span">
+                            <span class="label">Summary</span>
+                            <textarea rows="2" readonly>@Assembly.Summary</textarea>
+                        </label>
+                    </div>
+
+                    <article class="article-read-body article-view-body-html">
+                        @foreach (var paragraph in Assembly.Content.Intro)
+                        {
+                            <p>@paragraph</p>
+                        }
+
+                        @foreach (var articleSection in Assembly.Content.Sections)
+                        {
+                            <text>
+                            <section class="article-read-section">
+                                <h2>@articleSection.Heading</h2>
+                                @foreach (var paragraph in articleSection.Paragraphs)
+                                {
+                                    <p>@paragraph</p>
+                                }
+                            </section>
+                            </text>
+                        }
+
+                        @if (Assembly.Content.Conclusion.Any())
+                        {
+                            <section class="article-read-section">
+                                <h2>Conclusion</h2>
+                                @foreach (var paragraph in Assembly.Content.Conclusion)
+                                {
+                                    <p>@paragraph</p>
+                                }
+                            </section>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(Assembly.Content.Cta))
+                        {
+                            <section class="article-read-section">
+                                <h2>Next step</h2>
+                                <p>@Assembly.Content.Cta</p>
+                            </section>
+                        }
+                    </article>
+                </div>
+
+                <aside class="editor-sidebar-pane article-review-sidebar-pane">
+                    <div class="editor-side-card article-review-compact-card">
+                        <div class="editor-side-title">SEO Results</div>
+                        <label class="editor-field full-span">
+                            <span class="label">Meta description</span>
+                            <textarea rows="4" readonly>@Assembly.MetaDescription</textarea>
+                        </label>
+                        <div class="qa-review-meta" style="margin-top:1rem;">
+                            <span><strong>@Assembly.Slug</strong><small>slug</small></span>
+                            <span><strong>@Assembly.EstimatedWordCount</strong><small>words</small></span>
+                            <span><strong>@Assembly.EstimatedReadTimeMinutes</strong><small>min read</small></span>
+                        </div>
+                    </div>
+
+                    <div class="editor-side-card article-review-compact-card">
+                        <div class="editor-side-title">QA Results</div>
+                        <div class="qa-review-status-group" style="margin-bottom:0.75rem;">
+                            <span class="status-badge @(Assembly.QaPassed ? "status-approved" : "status-danger")">@(Assembly.QaPassed ? "Passed" : "Failed")</span>
+                            <span class="status-badge @(Assembly.PublishReady ? "status-approved" : "status-pending")">@(Assembly.PublishReady ? "Publish Ready" : "Needs Work")</span>
+                        </div>
+                        @if (Assembly.QaScore.HasValue)
+                        {
+                            <div><strong>Score:</strong> @Assembly.QaScore.Value.ToString("0.0")/10</div>
+                        }
+                        @if (Assembly.QaFeedback?.Any() == true)
+                        {
+                            <ul class="artifact-list" style="margin-top:0.75rem;">
+                                @foreach (var item in Assembly.QaFeedback)
+                                {
+                                    <li>@item</li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                </aside>
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid JobId { get; set; }
+
+    private ArticleAssemblyDto? Assembly;
+    private List<ContentWorkflowTask> Tasks { get; set; } = new();
+    private string Error = string.Empty;
+    private string ActionMessage = string.Empty;
+    private string ActionError = string.Empty;
+    private bool IsActing;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        Error = string.Empty;
+
+        try
+        {
+            Assembly = await Mediator.Send(new GetArticleAssemblyByWorkflowJobIdQuery(JobId));
+            Tasks = (await Mediator.Send(new GetWorkflowTasksByJobQuery(JobId))).OrderBy(x => x.DisplayOrder).ToList();
+
+            if (Assembly is null)
+            {
+                Error = "Article review response was empty.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed loading article review for {JobId}", JobId);
+            Error = $"Could not load article review. {ex.Message}";
+        }
+    }
+
+    private async Task ApproveAsync()
+    {
+        await RunActionAsync(async () =>
+        {
+            var qaTask = FindTask("QA") ?? FindTask("Run Strict QA Scoring");
+            if (qaTask is null)
+            {
+                throw new InvalidOperationException("Could not find the QA task for approval.");
+            }
+
+            await WorkflowControlService.AcceptTaskAsync(JobId, qaTask.Id, BuildRequest("Approved from final article page."));
+            ActionMessage = "Article approved.";
+        });
+    }
+
+    private async Task RejectAsync()
+    {
+        await RunActionAsync(async () =>
+        {
+            var qaTask = FindTask("QA") ?? FindTask("Run Strict QA Scoring");
+            if (qaTask is null)
+            {
+                throw new InvalidOperationException("Could not find the QA task for rejection.");
+            }
+
+            await WorkflowControlService.RejectTaskAsync(JobId, qaTask.Id, BuildRequest("Rejected from final article page."));
+            ActionMessage = "Article rejected.";
+        });
+    }
+
+    private async Task RerunDraftAsync()
+    {
+        await RunRerunAsync(new[] { "Write", "Draft" }, "Draft rerun requested.");
+    }
+
+    private async Task RerunSeoAsync()
+    {
+        await RunRerunAsync(new[] { "SEO", "Optimize" }, "SEO rerun requested.");
+    }
+
+    private async Task RerunQaAsync()
+    {
+        await RunRerunAsync(new[] { "QA" }, "QA rerun requested.");
+    }
+
+    private async Task RunRerunAsync(string[] nameHints, string successMessage)
+    {
+        await RunActionAsync(async () =>
+        {
+            var task = Tasks.FirstOrDefault(x => nameHints.Any(h => x.Name.Contains(h, StringComparison.OrdinalIgnoreCase) || x.StageName.Contains(h, StringComparison.OrdinalIgnoreCase)));
+            if (task is null)
+            {
+                throw new InvalidOperationException($"Could not find a matching task for {string.Join('/', nameHints)}.");
+            }
+
+            var success = await Mediator.Send(new RerunWorkflowFromTaskCommand(JobId, task.DisplayOrder, "Eric"));
+            if (!success)
+            {
+                throw new InvalidOperationException("The rerun request did not complete.");
+            }
+
+            ActionMessage = successMessage;
+        });
+    }
+
+    private ContentWorkflowTask? FindTask(string hint)
+        => Tasks.FirstOrDefault(x => x.Name.Contains(hint, StringComparison.OrdinalIgnoreCase) || x.StageName.Contains(hint, StringComparison.OrdinalIgnoreCase));
+
+    private WorkflowTaskControlRequestDto BuildRequest(string reason) => new()
+    {
+        Reason = reason,
+        CreatedBy = "Eric",
+        Source = "ArticleReview",
+        ActorType = "User",
+        CorrelationId = Guid.NewGuid().ToString("N")
+    };
+
+    private async Task RunActionAsync(Func<Task> action)
+    {
+        ActionMessage = string.Empty;
+        ActionError = string.Empty;
+        IsActing = true;
+
+        try
+        {
+            await action();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Article review action failed for {JobId}", JobId);
+            ActionError = ex.Message;
+        }
+        finally
+        {
+            IsActing = false;
+        }
+    }
+}

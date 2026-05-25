@@ -1,0 +1,91 @@
+@page "/workflow-queue"
+
+@using MediatR
+@using ContentOS.Application.DTOs
+@using ContentOS.Application.Queries
+@inject IMediator Mediator
+
+<PageTitle>Workflow Queue | ContentOS</PageTitle>
+
+<div class="mission-control-container kingadmin-dashboard">
+    <div class="crumb-row">
+        <span>Home</span>
+        <span class="crumb-sep">›</span>
+        <span>Workflow Queue</span>
+    </div>
+
+    <div class="page-header-row">
+        <div>
+            <h1 class="page-title">WORKFLOW QUEUE</h1>
+            <p class="page-subtitle">revisit approved, in-progress, and completed production jobs.</p>
+        </div>
+        <div class="mini-metrics">
+            <div class="mini-metric"><span class="mini-label">Total</span><strong>@Jobs.Count</strong></div>
+            <div class="mini-metric"><span class="mini-label">In Progress</span><strong>@Jobs.Count(x => x.Status == "InProgress")</strong></div>
+            <div class="mini-metric"><span class="mini-label">Completed</span><strong>@Jobs.Count(x => x.Status == "Completed")</strong></div>
+        </div>
+    </div>
+
+    <section class="dashboard-card compact-card">
+        <div class="widget-title">Production Jobs</div>
+        <table class="architect-table compact-table">
+            <thead>
+                <tr>
+                    <th>Topic</th>
+                    <th>Site</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Stage</th>
+                    <th>Updated</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Jobs.Any())
+                {
+                    <tr>
+                        <td colspan="7" class="text-center">No workflow jobs yet.</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var job in Jobs)
+                    {
+                        <tr>
+                            <td>
+                                <div class="font-bold">@job.Title</div>
+                            </td>
+                            <td>@job.SiteName</td>
+                            <td>@FormatLabel(job.ContentType)</td>
+                            <td><span class="status-badge @(MapJobStatusClass(job.Status))">@job.Status</span></td>
+                            <td>@job.CurrentStage</td>
+                            <td>@job.LastUpdatedUtc.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            <td class="action-cell">
+                                <a class="btn-primary" href="@($"/workflow-job/{job.WorkflowJobId}")">Open Workflow</a>
+                                <a class="btn-secondary" href="@($"/research-inbox/{job.ContentIdeaId}")">Idea</a>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </section>
+</div>
+
+@code {
+    private List<WorkflowJobListItemDto> Jobs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Jobs = (await Mediator.Send(new GetWorkflowJobListQuery())).ToList();
+    }
+
+    private static string FormatLabel(string value)
+        => value.Replace("Article", string.Empty, StringComparison.Ordinal);
+
+    private static string MapJobStatusClass(string status)
+        => status == "Completed" ? "status-approved"
+         : status == "InProgress" ? "status-ready"
+         : status == "Blocked" || status == "Failed" ? "status-danger"
+         : "status-pending";
+}

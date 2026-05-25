@@ -1,0 +1,17 @@
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Infrastructure/bin/Release/net10.0/ContentOS.Infrastructure.deps.json
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Infrastructure/bin/Release/net10.0/ContentOS.Infrastructure.dll
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Infrastructure/bin/Release/net10.0/ContentOS.Infrastructure.pdb
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Infrastructure/bin/Release/net10.0/ContentOS.Application.dll
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Infrastructure/bin/Release/net10.0/ContentOS.Domain.dll
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Infrastructure/bin/Release/net10.0/ContentOS.Domain.pdb
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Infrastructure/bin/Release/net10.0/ContentOS.Application.pdb
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Infrastructure/obj/Release/net10.0/ContentOS.Infrastructure.csproj.AssemblyReference.cache
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Infrastructure/obj/Release/net10.0/ContentOS.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Infrastructure/obj/Release/net10.0/ContentOS.Infrastructure.AssemblyInfoInputs.cache
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Infrastructure/obj/Release/net10.0/ContentOS.Infrastructure.AssemblyInfo.cs
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Infrastructure/obj/Release/net10.0/ContentOS.Infrastructure.csproj.CoreCompileInputs.cache
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Infrastructure/obj/Release/net10.0/ContentO.37991B8D.Up2Date
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Infrastructure/obj/Release/net10.0/ContentOS.Infrastructure.dll
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Infrastructure/obj/Release/net10.0/refint/ContentOS.Infrastructure.dll
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Infrastructure/obj/Release/net10.0/ContentOS.Infrastructure.pdb
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Infrastructure/obj/Release/net10.0/ref/ContentOS.Infrastructure.dll

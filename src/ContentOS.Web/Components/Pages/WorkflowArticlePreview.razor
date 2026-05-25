@@ -1,0 +1,325 @@
+@page "/workflow-job/{JobId:guid}/preview"
+
+@using System.Text.Json
+@using MediatR
+@using ContentOS.Application.Queries
+@using ContentOS.Domain.Entities
+@inject IMediator Mediator
+@inject IJSRuntime JS
+
+<PageTitle>Article Preview | ContentOS</PageTitle>
+
+<div class="mission-control-container article-read-shell">
+    <div class="crumb-row">
+        <span>Home</span>
+        <span class="crumb-sep">›</span>
+        <a href="/workflow-queue">Workflow Queue</a>
+        <span class="crumb-sep">›</span>
+        <a href="@($"/workflow-job/{JobId}")">Workflow</a>
+        <span class="crumb-sep">›</span>
+        <span>Read Mode</span>
+    </div>
+
+    @if (PreviewArtifact is null)
+    {
+        <div class="empty-card">Final article preview not found for this workflow.</div>
+    }
+    else
+    {
+        var preview = ParseArtifactJson(PreviewArtifact.ContentJson);
+
+        <div class="page-header-row">
+            <div>
+                <h1 class="page-title">ARTICLE PREVIEW</h1>
+                <p class="page-subtitle">read mode for the current publish-ready article draft.</p>
+            </div>
+            <div class="actions-group">
+                <a class="btn-secondary" href="@($"/workflow-job/{JobId}")">Back to Workflow</a>
+            </div>
+        </div>
+
+        <article class="dashboard-card compact-card article-read-card">
+            <header class="article-read-header">
+                <div class="tag-row">
+                    @if (!string.IsNullOrWhiteSpace(GetJsonString(preview, "keywordStrengthLabel")))
+                    {
+                        <span class="badge-neutral">Keyword strength: @GetJsonString(preview, "keywordStrengthLabel") (@GetJsonString(preview, "keywordStrengthScore"))</span>
+                    }
+                    <span class="badge-blue">Final Preview</span>
+                    @if (!string.IsNullOrWhiteSpace(GetJsonString(preview, "contentType")))
+                    {
+                        <span class="badge-neutral">@GetJsonString(preview, "contentType")</span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(GetJsonString(preview, "slug")))
+                    {
+                        <span class="badge-neutral">@GetJsonString(preview, "slug")</span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(GetJsonString(preview, "targetWordCountMin")))
+                    {
+                        <span class="badge-neutral">Target @GetJsonString(preview, "targetWordCountMin")-@GetJsonString(preview, "targetWordCountMax") words</span>
+                    }
+                </div>
+                <h1 class="article-read-title">@GetJsonString(preview, "title")</h1>
+                <p class="article-read-summary">@GetJsonString(preview, "summary")</p>
+            </header>
+
+            <section class="article-read-stats">
+                <div class="mini-metric">
+                    <span class="mini-label">Estimated words</span>
+                    <strong>@GetJsonString(preview, "estimatedWordCount")</strong>
+                </div>
+                <div class="mini-metric">
+                    <span class="mini-label">Estimated read time</span>
+                    <strong>@GetJsonString(preview, "estimatedReadTimeMinutes") min</strong>
+                </div>
+            </section>
+
+            <section class="article-read-meta-box">
+                @if (!string.IsNullOrWhiteSpace(GetJsonString(preview, "primaryKeyword")))
+                {
+                    <span class="label">Primary keyword</span>
+                    <p>@GetJsonString(preview, "primaryKeyword")</p>
+                }
+                @if (!string.IsNullOrWhiteSpace(GetJsonString(preview, "keywordStrengthReason")))
+                {
+                    <span class="label">Keyword strength signal</span>
+                    <p>@GetJsonString(preview, "keywordStrengthReason")</p>
+                }
+                <span class="label">Meta description</span>
+                <p>@GetJsonString(preview, "metaDescription")</p>
+            </section>
+
+            <section class="article-read-body">
+                @if (!string.IsNullOrWhiteSpace(GetJsonString(preview, "htmlBody")))
+                {
+                    @((MarkupString)RestructureToc(GetJsonString(preview, "htmlBody")))
+                }
+                else
+                {
+                    @foreach (var paragraph in GetArticleParagraphs(preview, "introParagraphs", "intro"))
+                    {
+                        <p>@paragraph</p>
+                    }
+
+                    @foreach (var articleSection in GetFinalArticleSections(preview))
+                    {
+                        <section class="article-read-section">
+                            <h2>@articleSection.Heading</h2>
+                            @foreach (var paragraph in articleSection.Paragraphs)
+                            {
+                                <p>@paragraph</p>
+                            }
+                        </section>
+                    }
+
+                    <section class="article-read-section">
+                        <h2>Conclusion</h2>
+                        @foreach (var paragraph in GetArticleParagraphs(preview, "conclusionParagraphs", "conclusion"))
+                        {
+                            <p>@paragraph</p>
+                        }
+                    </section>
+
+                    <section class="article-read-section">
+                        <h2>Next step</h2>
+                        <p>@GetJsonString(preview, "callToAction")</p>
+                    </section>
+                }
+            </section>
+        </article>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid JobId { get; set; }
+
+    private ContentArtifact? PreviewArtifact;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var artifacts = await Mediator.Send(new GetContentArtifactsByJobQuery(JobId));
+        PreviewArtifact = artifacts
+            .Where(x => x.ArtifactType == "FinalArticlePreview")
+            .OrderByDescending(x => x.CreatedUtc)
+            .FirstOrDefault();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("contentOsToc.restructure");
+        }
+        catch { }
+    }
+
+    private static string RestructureToc(string html)
+    {
+        if (string.IsNullOrEmpty(html))
+        {
+            return html;
+        }
+
+        html = RemoveSection(html, "article-read-stats");
+        html = RemoveSection(html, "article-read-meta-box");
+
+        var tocStart = html.IndexOf("Table of Contents", StringComparison.Ordinal);
+        if (tocStart < 0)
+        {
+            return html;
+        }
+
+        var pStart = html.LastIndexOf("<p>", tocStart, StringComparison.Ordinal);
+        if (pStart < 0)
+        {
+            pStart = html.LastIndexOf("<P>", tocStart, StringComparison.Ordinal);
+        }
+        if (pStart < 0)
+        {
+            return html;
+        }
+
+        var pEnd = html.IndexOf("</p>", tocStart, StringComparison.Ordinal);
+        if (pEnd < 0)
+        {
+            pEnd = html.IndexOf("</P>", tocStart, StringComparison.Ordinal);
+        }
+        if (pEnd < 0)
+        {
+            return html;
+        }
+        pEnd += 4;
+
+        var tocHtml = html.Substring(pStart, pEnd - pStart);
+        if (!tocHtml.Contains("<a href=\"#", StringComparison.Ordinal))
+        {
+            return html;
+        }
+
+        var linkRegex = new System.Text.RegularExpressions.Regex("<a href=\"(?<slug>#[^\"]+)\">(?<text>.*?)</a>", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var matches = linkRegex.Matches(tocHtml);
+        if (matches.Count == 0)
+        {
+            return html;
+        }
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append("<div class=\"contentos-toc\">");
+        sb.Append("<div class=\"contentos-toc-title\">Table of Contents</div>");
+        sb.Append("<ul class=\"contentos-toc-list\">");
+
+        foreach (System.Text.RegularExpressions.Match match in matches)
+        {
+            var href = match.Groups["slug"].Value;
+            var text = match.Groups["text"].Value;
+            sb.Append($"<li><a href=\"{href}\">{text}</a></li>");
+        }
+
+        sb.Append("</ul>");
+        sb.Append("</div>");
+
+        return html.Substring(0, pStart) + sb + html.Substring(pEnd);
+    }
+
+    private static string RemoveSection(string html, string className)
+    {
+        var pattern = $"<section[^>]*class=\"[^\"]*{System.Text.RegularExpressions.Regex.Escape(className)}[^\"]*\"[^>]*>.*?</section>";
+        return System.Text.RegularExpressions.Regex.Replace(
+            html,
+            pattern,
+            string.Empty,
+            System.Text.RegularExpressions.RegexOptions.Singleline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    }
+
+    private static JsonElement? ParseArtifactJson(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.Clone();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string GetJsonString(JsonElement? payload, string propertyName)
+    {
+        if (payload is null || !payload.Value.TryGetProperty(propertyName, out var property))
+        {
+            return string.Empty;
+        }
+
+        return property.ValueKind switch
+        {
+            JsonValueKind.String => property.GetString() ?? string.Empty,
+            JsonValueKind.Number => property.ToString(),
+            JsonValueKind.True => "true",
+            JsonValueKind.False => "false",
+            _ => property.ToString()
+        };
+    }
+
+    private static IEnumerable<string> GetArticleParagraphs(JsonElement? payload, string arrayPropertyName, string fallbackPropertyName)
+    {
+        if (payload is null)
+        {
+            return Enumerable.Empty<string>();
+        }
+
+        if (payload.Value.TryGetProperty(arrayPropertyName, out var arrayProperty) && arrayProperty.ValueKind == JsonValueKind.Array)
+        {
+            return arrayProperty
+                .EnumerateArray()
+                .Select(item => item.ValueKind == JsonValueKind.String ? item.GetString() ?? string.Empty : item.ToString())
+                .Where(item => !string.IsNullOrWhiteSpace(item));
+        }
+
+        var fallback = GetJsonString(payload, fallbackPropertyName);
+        return string.IsNullOrWhiteSpace(fallback)
+            ? Enumerable.Empty<string>()
+            : fallback.Split("\n\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    private static IEnumerable<(string Heading, IEnumerable<string> Paragraphs)> GetFinalArticleSections(JsonElement? payload)
+    {
+        if (payload is null)
+        {
+            return Enumerable.Empty<(string Heading, IEnumerable<string> Paragraphs)>();
+        }
+
+        if (payload.Value.TryGetProperty("sections", out var sectionsProperty) && sectionsProperty.ValueKind == JsonValueKind.Array)
+        {
+            return sectionsProperty.EnumerateArray()
+                .Select(section =>
+                {
+                    var heading = section.TryGetProperty("heading", out var headingProperty)
+                        ? headingProperty.GetString() ?? string.Empty
+                        : string.Empty;
+
+                    var paragraphs = section.TryGetProperty("paragraphs", out var paragraphsProperty) && paragraphsProperty.ValueKind == JsonValueKind.Array
+                        ? paragraphsProperty.EnumerateArray()
+                            .Select(item => item.ValueKind == JsonValueKind.String ? item.GetString() ?? string.Empty : item.ToString())
+                            .Where(item => !string.IsNullOrWhiteSpace(item))
+                        : Enumerable.Empty<string>();
+
+                    return (Heading: heading, Paragraphs: paragraphs);
+                })
+                .Where(section => !string.IsNullOrWhiteSpace(section.Heading) && section.Paragraphs.Any());
+        }
+
+        return new[]
+        {
+            (GetJsonString(payload, "sectionOneHeading"), GetArticleParagraphs(payload, "missing", "sectionOneBody")),
+            (GetJsonString(payload, "sectionTwoHeading"), GetArticleParagraphs(payload, "missing", "sectionTwoBody")),
+            (GetJsonString(payload, "sectionThreeHeading"), GetArticleParagraphs(payload, "missing", "sectionThreeBody")),
+            (GetJsonString(payload, "sectionFourHeading"), GetArticleParagraphs(payload, "missing", "sectionFourBody"))
+        }.Where(x => !string.IsNullOrWhiteSpace(x.Item1) && x.Item2.Any());
+    }
+}

@@ -1,0 +1,193 @@
+@page "/sites"
+@using MediatR
+@using ContentOS.Application.Queries
+@using ContentOS.Application.Commands
+@using ContentOS.Domain.Entities
+@inject IMediator Mediator
+
+<PageTitle>Sites | ContentOS</PageTitle>
+
+<div class="dashboard-shell">
+    <div class="crumb-row">
+        <span>Home</span>
+        <span class="crumb-sep">›</span>
+        <span>Sites</span>
+    </div>
+
+    <div class="page-header-row">
+        <div>
+            <h1 class="page-title">SITES</h1>
+            <p class="page-subtitle">manage your publishing sites</p>
+        </div>
+        <button class="btn-primary" @onclick="ShowAddForm">+ Add Site</button>
+    </div>
+
+    @if (isLoading)
+    {
+        <p>Loading sites...</p>
+    }
+    else if (!sites.Any())
+    {
+        <section class="dashboard-card compact-card">
+            <p>No sites yet. Add your first site to get started.</p>
+        </section>
+    }
+    else
+    {
+        <section class="dashboard-card compact-card">
+            <table class="architect-table compact-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Domain</th>
+                        <th>Niche</th>
+                        <th>Tone</th>
+                        <th>Platform</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var site in sites)
+                    {
+                        <tr>
+                            <td>@site.Name</td>
+                            <td>@site.Domain</td>
+                            <td>@site.Niche</td>
+                            <td>@site.DefaultTone</td>
+                            <td>@site.PlatformType</td>
+                            <td><span class="status-badge status-approved">@(site.IsActive ? "Active" : "Inactive")</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+    }
+
+    @if (showForm)
+    {
+        <section class="dashboard-card compact-card" style="margin-top:1rem;">
+            <div class="widget-title">Add New Site</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;max-width:600px;">
+                <div>
+                    <label style="display:block;margin-bottom:0.25rem;font-weight:600;">Name</label>
+                    <input type="text" @bind="newName" placeholder="e.g. My Blog" style="width:100%;padding:0.5rem;" />
+                </div>
+                <div>
+                    <label style="display:block;margin-bottom:0.25rem;font-weight:600;">Domain</label>
+                    <input type="text" @bind="newDomain" placeholder="e.g. myblog.com" style="width:100%;padding:0.5rem;" />
+                </div>
+                <div>
+                    <label style="display:block;margin-bottom:0.25rem;font-weight:600;">Niche</label>
+                    <input type="text" @bind="newNiche" placeholder="e.g. Personal Finance" style="width:100%;padding:0.5rem;" />
+                </div>
+                <div>
+                    <label style="display:block;margin-bottom:0.25rem;font-weight:600;">Default Tone</label>
+                    <select @bind="newTone" style="width:100%;padding:0.5rem;">
+                        <option value="">-- Select Tone --</option>
+                        <option value="Practical and encouraging">Practical and encouraging</option>
+                        <option value="Clear and analytical">Clear and analytical</option>
+                        <option value="Conversational and friendly">Conversational and friendly</option>
+                        <option value="Authoritative and expert">Authoritative and expert</option>
+                        <option value="Casual and witty">Casual and witty</option>
+                        <option value="Inspirational and motivational">Inspirational and motivational</option>
+                        <option value="Direct and no-nonsense">Direct and no-nonsense</option>
+                        <option value="Empathetic and supportive">Empathetic and supportive</option>
+                        <option value="Professional and polished">Professional and polished</option>
+                        <option value="Story-driven and narrative">Story-driven and narrative</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block;margin-bottom:0.25rem;font-weight:600;">Platform</label>
+                    <select @bind="newPlatform" style="width:100%;padding:0.5rem;">
+                        <option value="WordPress">WordPress</option>
+                        <option value="Ghost">Ghost</option>
+                        <option value="Static">Static</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top:1rem;display:flex;gap:0.5rem;">
+                <button class="btn-primary" @onclick="SaveSite" disabled="@isSaving">
+                    @(isSaving ? "Saving..." : "Save")
+                </button>
+                <button class="btn-secondary" @onclick="HideAddForm">Cancel</button>
+            </div>
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <p style="color:red;margin-top:0.5rem;">@errorMessage</p>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private bool showForm = false;
+    private bool isSaving = false;
+    private string errorMessage = "";
+    private List<Site> sites = new();
+
+    private string newName = "";
+    private string newDomain = "";
+    private string newNiche = "";
+    private string newTone = "";
+    private string newPlatform = "WordPress";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSites();
+    }
+
+    private async Task LoadSites()
+    {
+        isLoading = true;
+        try
+        {
+            var result = await Mediator.Send(new GetSitesQuery());
+            sites = result?.ToList() ?? new();
+        }
+        catch { }
+        isLoading = false;
+    }
+
+    private void ShowAddForm() { showForm = true; errorMessage = ""; }
+    private void HideAddForm() { showForm = false; errorMessage = ""; ResetForm(); }
+    private void ResetForm() { newName = ""; newDomain = ""; newNiche = ""; newTone = ""; newPlatform = "WordPress"; }
+
+    private async Task SaveSite()
+    {
+        if (string.IsNullOrWhiteSpace(newName) || string.IsNullOrWhiteSpace(newDomain))
+        {
+            errorMessage = "Name and Domain are required.";
+            return;
+        }
+
+        isSaving = true;
+        errorMessage = "";
+
+        try
+        {
+            var command = new CreateSiteCommand
+            {
+                Name = newName,
+                Domain = newDomain,
+                Niche = newNiche,
+                DefaultTone = newTone,
+                PlatformType = newPlatform
+            };
+
+            await Mediator.Send(command);
+            showForm = false;
+            ResetForm();
+            await LoadSites();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

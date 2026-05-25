@@ -1,0 +1,67 @@
+# Build outputs
+**/bin/
+**/obj/
+**/out/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.pre-*.db
+contentos.db*
+src/ContentOS.Api/contentos.db*
+src/ContentOS.AppHost/contentos.db*
+
+# Environment / secrets
+*.env
+.env
+appsettings.*.secret.json
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.cache
+
+# OS
+.DS_Store
+Thumbs.db
+
+# OpenClaw workspace state (internal)
+.openclaw/
+
+# NuGet
+**/packages/
+*.nupkg
+
+# Test results
+TestResults/
+
+# Coverage reports
+coverage/
+coverage-*/
+
+# Image artifacts (generated at runtime)
+src/ContentOS.Api/wwwroot/images/artifacts/
+src/ContentOS.Api/wwwroot/images/images/
+
+# Dreaming artifacts
+dreaming/
+
+# Upload references
+upload-ref*
+
+# Pipeline trigger script
+pipeline-trigger.sh
+
+# Misc
+dummyfile.txt
+merged.cobertura.xml
+--full-page
+C
+.agent

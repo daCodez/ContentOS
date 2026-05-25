@@ -1,0 +1,152 @@
+@using MediatR
+@using ContentOS.Application.Queries
+@using ContentOS.Application.DTOs
+@using ContentOS.Domain.Entities
+@using ContentOS.Domain.Enums
+@inject IMediator Mediator
+
+<div class="nav-section">
+    <div class="nav-section-label">Production</div>
+
+    <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        Dashboard
+    </NavLink>
+
+    <div class="nav-item">
+        <div class="nav-link with-count" @onclick="ToggleIdeas">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V18h6v-1.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>
+            Ideas
+            <span class="nav-count warn">@IdeasCount</span>
+            <svg class="chevron @(IdeasExpanded ? "open" : "")" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 6 15 12 9 18"/></svg>
+        </div>
+        <div class="nav-children @(IdeasExpanded ? "open" : "")">
+            <NavLink class="nav-child" href="/research-inbox" Match="NavLinkMatch.All">Idea Queue <span class="child-count">@IdeaQueueCount</span></NavLink>
+        </div>
+    </div>
+
+    <div class="nav-item">
+        <div class="nav-link with-count" @onclick="ToggleArticles">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="14" y2="17"/></svg>
+            Articles
+            <span class="nav-count warn">@ArticlesFailedCount</span>
+            <svg class="chevron @(ArticlesExpanded ? "open" : "")" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 6 15 12 9 18"/></svg>
+        </div>
+        <div class="nav-children @(ArticlesExpanded ? "open" : "")">
+            <NavLink class="nav-child" href="/article-runs">In Progress <span class="child-count">@ArticlesInProgressCount</span></NavLink>
+            <NavLink class="nav-child" href="/articles">Queued <span class="child-count">@ArticlesDraftCount</span></NavLink>
+            <NavLink class="nav-child" href="/articles">Completed <span class="child-count">@ArticlesReviewCount</span></NavLink>
+            <NavLink class="nav-child" href="/articles">Ready to Publish <span class="child-count">@ArticlesReadyCount</span></NavLink>
+            <NavLink class="nav-child" href="/articles">Published <span class="child-count">@ArticlesPublishedCount</span></NavLink>
+            <NavLink class="nav-child" href="/workflow-queue">Failed <span class="child-count">@ArticlesFailedCount</span></NavLink>
+        </div>
+    </div>
+
+    <div class="nav-item">
+        <div class="nav-link" @onclick="ToggleReviews">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            Reviews
+            <svg class="chevron @(ReviewsExpanded ? "open" : "")" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 6 15 12 9 18"/></svg>
+        </div>
+        <div class="nav-children @(ReviewsExpanded ? "open" : "")">
+            <NavLink class="nav-child" href="/article-runs">Awaiting Review <span class="child-count">@ArticlesReviewCount</span></NavLink>
+        </div>
+    </div>
+
+    <div class="nav-item">
+        <div class="nav-link" @onclick="TogglePublishing">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Publishing
+            <svg class="chevron @(PublishingExpanded ? "open" : "")" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 6 15 12 9 18"/></svg>
+        </div>
+        <div class="nav-children @(PublishingExpanded ? "open" : "")">
+            <NavLink class="nav-child" href="/articles">Ready <span class="child-count">@ArticlesReadyCount</span></NavLink>
+            <NavLink class="nav-child" href="/articles">Published <span class="child-count">@ArticlesPublishedCount</span></NavLink>
+        </div>
+    </div>
+</div>
+
+<div class="nav-section">
+    <div class="nav-section-label">Configure</div>
+    <div class="nav-item">
+        <div class="nav-link" @onclick="ToggleWorkflow">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            Workflow Settings
+            <svg class="chevron @(WorkflowExpanded ? "open" : "")" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 6 15 12 9 18"/></svg>
+        </div>
+        <div class="nav-children @(WorkflowExpanded ? "open" : "")">
+            <NavLink class="nav-child" href="/workflow-settings/ideation">Ideation Workflow</NavLink>
+            <NavLink class="nav-child" href="/workflow-settings/article">Article Workflow</NavLink>
+        </div>
+    </div>
+    <NavLink class="nav-link" href="/settings">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Reports
+    </NavLink>
+    <NavLink class="nav-link" href="/component-library">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+        Component Library
+    </NavLink>
+</div>
+
+@code {
+    // Expand/collapse state — Ideas and Articles start expanded
+    private bool IdeasExpanded = true;
+    private bool ArticlesExpanded = true;
+    private bool ReviewsExpanded;
+    private bool PublishingExpanded;
+    private bool WorkflowExpanded;
+
+    // Nav counts from real data
+    private int IdeasCount;
+    private int IdeaQueueCount;
+    private int ArticlesInProgressCount;
+    private int ArticlesDraftCount;
+    private int ArticlesReviewCount;
+    private int ArticlesReadyCount;
+    private int ArticlesPublishedCount;
+    private int ArticlesFailedCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCountsAsync();
+    }
+
+    private async Task LoadCountsAsync()
+    {
+        try
+        {
+            // Ideas: count non-archived ideas needing review (ContentIdea uses string status)
+            var ideas = await Mediator.Send(new GetContentIdeasQuery());
+            IdeasCount = ideas.Count(i => i.Status == "NeedsReview" || i.Status == "Discovered" || i.Status == "PendingReview" || i.Status == "New");
+            IdeaQueueCount = IdeasCount;
+
+            // Article run counts — WorkflowDefinitionRuns stores status as int enum
+            // 1=Ready, 2=InProgress, 3=Completed, 4=Failed, 5=Pending
+            var runs = await Mediator.Send(new GetArticleRunsQuery());
+            ArticlesInProgressCount = runs.Count(r => IsRunStatus(r.Status, WorkflowDefinitionRunStatus.InProgress));
+            ArticlesDraftCount = runs.Count(r => IsRunStatus(r.Status, WorkflowDefinitionRunStatus.Ready) || IsRunStatus(r.Status, WorkflowDefinitionRunStatus.Pending));
+            ArticlesReviewCount = runs.Count(r => IsRunStatus(r.Status, WorkflowDefinitionRunStatus.Completed));
+            ArticlesReadyCount = ArticlesReviewCount; // completed = ready for review/publish
+            ArticlesPublishedCount = 0; // no published state in current enum
+            ArticlesFailedCount = runs.Count(r => IsRunStatus(r.Status, WorkflowDefinitionRunStatus.Failed));
+        }
+        catch
+        {
+            // Graceful fallback - counts stay at 0
+        }
+    }
+
+    private static bool IsRunStatus(string rawStatus, WorkflowDefinitionRunStatus expected)
+    {
+        if (int.TryParse(rawStatus, out var code))
+            return code == (int)expected;
+        return rawStatus.Equals(expected.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void ToggleIdeas() => IdeasExpanded = !IdeasExpanded;
+    private void ToggleArticles() => ArticlesExpanded = !ArticlesExpanded;
+    private void ToggleReviews() => ReviewsExpanded = !ReviewsExpanded;
+    private void TogglePublishing() => PublishingExpanded = !PublishingExpanded;
+    private void ToggleWorkflow() => WorkflowExpanded = !WorkflowExpanded;
+}

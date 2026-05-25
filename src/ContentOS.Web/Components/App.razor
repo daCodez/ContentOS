@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <ResourcePreloader />
+    <link rel="stylesheet" href="@Assets["ContentOS.Web.styles.css"]" />
+    <link rel="stylesheet" href="app.css" />
+    <ImportMap />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <HeadOutlet @rendermode="InteractiveServer" />
+</head>
+<body>
+    <Routes @rendermode="InteractiveServer" />
+
+    <!-- Editor.js (local, no CDN) -->
+    <script src="js/editorjs/editorjs.umd.js"></script>
+    <script src="js/editorjs/header.umd.js"></script>
+    <script src="js/editorjs/paragraph.umd.js"></script>
+    <script src="js/editorjs/list.umd.js"></script>
+    <script src="js/editorjs/quote.umd.js"></script>
+    <script src="js/editorjs/image.umd.js"></script>
+    <script src="js/editorjs/embed.umd.js"></script>
+    <script src="js/editorjs/delimiter.umd.js"></script>
+
+    <script>
+        window.contentOsTheme = {
+            storageKey: "contentos-theme",
+            get: function () {
+                return localStorage.getItem(this.storageKey) || "system";
+            },
+            apply: function (theme) {
+                document.body.dataset.theme = theme;
+                document.documentElement.style.colorScheme = theme === "system"
+                    ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+                    : theme;
+                document.querySelectorAll(".theme-select").forEach(function (select) {
+                    select.value = theme;
+                });
+            },
+            set: function (theme) {
+                localStorage.setItem(this.storageKey, theme);
+                this.apply(theme);
+            },
+            init: function () {
+                const theme = this.get();
+                this.apply(theme);
+                const media = window.matchMedia("(prefers-color-scheme: dark)");
+                const refreshSystem = () => {
+                    if ((localStorage.getItem(this.storageKey) || "system") === "system") {
+                        this.apply("system");
+                    }
+                };
+                if (media.addEventListener) {
+                    media.addEventListener("change", refreshSystem);
+                } else if (media.addListener) {
+                    media.addListener(refreshSystem);
+                }
+            }
+        };
+
+        window.contentOsEditor = {
+            _instances: {},
+
+            init: async function (id, initialData) {
+                const holder = document.getElementById(id);
+                if (!holder) {
+                    console.warn('[ContentOS Editor] Holder element not found:', id);
+                    return false;
+                }
+
+                // If no initialData passed, try to read from data attribute
+                if (!initialData && holder.dataset.editorContent) {
+                    try {
+                        initialData = decodeURIComponent(escape(atob(holder.dataset.editorContent)));
+                    } catch (e) {
+                        console.warn('[ContentOS Editor] Could not decode data-editor-content:', e);
+                    }
+                }
+
+                // Wait for Editor.js scripts to be available
+                let attempts = 0;
+                while (!window.EditorJS || !window.Header || !window.Paragraph || !window.EditorjsList || !window.Quote || !window.ImageTool || !window.Embed || !window.Delimiter) {
+                    attempts++;
+                    if (attempts > 50) {
+                        console.error('[ContentOS Editor] Scripts did not load in time');
+                        return false;
+                    }
+                    await new Promise(r => setTimeout(r, 100));
+                }
+
+                if (this._instances[id]) {
+                    await this._instances[id].destroy();
+                    delete this._instances[id];
+                    holder.innerHTML = '';
+                }
+
+                let data = undefined;
+                if (initialData) {
+                    try {
+                        const parsed = typeof initialData === 'string' ? JSON.parse(initialData) : initialData;
+                        if (parsed && parsed.blocks && Array.isArray(parsed.blocks)) {
+                            data = parsed;
+                        }
+                    } catch (e) {
+                        // initialData is HTML — split into blocks
+                        const trimmed = (initialData || '').trim();
+                        if (trimmed) {
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = trimmed;
+                            const blocks = [];
+                            for (const child of tempDiv.childNodes) {
+                                if (child.nodeType === Node.TEXT_NODE) {
+                                    const txt = child.textContent.trim();
+                                    if (txt) blocks.push({ type: 'paragraph', data: { text: txt } });
+                                } else if (child.nodeType === Node.ELEMENT_NODE) {
+                                    const tag = child.tagName.toLowerCase();
+                                    const inner = child.innerHTML || child.textContent || '';
+                                    if (tag.match(/^h[1-6]$/)) {
+                                        blocks.push({ type: 'header', data: { text: child.textContent.trim(), level: parseInt(tag[1]) } });
+                                    } else if (tag === 'p' || tag === 'div') {
+                                        if (inner.trim()) blocks.push({ type: 'paragraph', data: { text: inner.trim() } });
+                                    } else if (tag === 'blockquote') {
+                                        const pEl = child.querySelector('p');
+                                        const citeEl = child.querySelector('cite');
+                                        blocks.push({ type: 'quote', data: { text: pEl ? pEl.innerHTML : inner, caption: citeEl ? citeEl.textContent : '', alignment: 'left' } });
+                                    } else if (tag === 'ul' || tag === 'ol') {
+                                        const items = Array.from(child.querySelectorAll(':scope > li')).map(li => li.innerHTML);
+                                        blocks.push({ type: 'list', data: { style: tag === 'ol' ? 'ordered' : 'unordered', items: items } });
+                                    } else if (tag === 'hr') {
+                                        blocks.push({ type: 'delimiter', data: {} });
+                                    } else if (inner.trim()) {
+                                        blocks.push({ type: 'paragraph', data: { text: inner.trim() } });
+                                    }
+                                }
+                            }
+                            data = blocks.length > 0 ? { blocks: blocks } : { blocks: [{ type: 'paragraph', data: { text: trimmed } }] };
+                        }
+                    }
+                }
+
+                try {
+                    const editor = new EditorJS({
+                        holder: id,
+                        data: data,
+                        defaultBlock: 'paragraph',
+                        autofocus: false,
+                        placeholder: 'Start writing your article...',
+                        tools: {
+                            header: { class: Header, config: { levels: [2, 3, 4], defaultLevel: 2 }, inlineToolbar: true },
+                            paragraph: { class: Paragraph, inlineToolbar: true },
+                            list: { class: EditorjsList, inlineToolbar: true },
+                            quote: { class: Quote, inlineToolbar: true },
+                            image: ImageTool,
+                            embed: Embed,
+                            delimiter: Delimiter
+                        },
+                        inlineToolbar: ['bold', 'italic', 'link'],
+                    });
+
+                    await editor.isReady;
+                    this._instances[id] = editor;
+                    holder.dataset.editorReady = 'true';
+                    console.log('[ContentOS Editor] Initialized on', id);
+                    return true;
+                } catch (err) {
+                    console.error('[ContentOS Editor] Failed to initialize:', err);
+                    return false;
+                }
+            },
+
+            initWhenReady: async function (id, initialData) {
+                return await this.init(id, initialData);
+            },
+
+            getJson: async function (id) {
+                const editor = this._instances[id];
+                if (!editor) return '';
+                try {
+                    const output = await editor.save();
+                    return JSON.stringify(output);
+                } catch (e) {
+                    console.error('[ContentOS Editor] getJson failed:', e);
+                    return '';
+                }
+            },
+
+            getHtml: async function (id) {
+                const editor = this._instances[id];
+                if (!editor) return '';
+                try {
+                    const output = await editor.save();
+                    return this.blocksToHtml(output.blocks);
+                } catch (e) {
+                    console.error('[ContentOS Editor] getHtml failed:', e);
+                    return '';
+                }
+            },
+
+            blocksToHtml: function (blocks) {
+                if (!blocks || !Array.isArray(blocks)) return '';
+                let html = '';
+                for (const block of blocks) {
+                    switch (block.type) {
+                        case 'header':
+                            const lvl = block.data.level || 2;
+                            const headingText = block.data.text || '';
+                            const slug = headingText
+                                .replace(/<[^>]*>/g, '')
+                                .toLowerCase()
+                                .replace(/[^a-z0-9\s-]/g, '')
+                                .replace(/\s+/g, '-')
+                                .replace(/-+/g, '-')
+                                .replace(/^-|-$/g, '');
+                            const idAttr = slug ? ` id="${slug}"` : '';
+                            html += `<h${lvl}${idAttr}>${headingText}</h${lvl}>`;
+                            break;
+                        case 'paragraph':
+                            html += `<p>${block.data.text || ''}</p>`;
+                            break;
+                        case 'list':
+                            const tag = block.data.style === 'ordered' ? 'ol' : 'ul';
+                            const items = (block.data.items || []).map(i => {
+                                if (typeof i === 'string') return `<li>${i}</li>`;
+                                if (i.content) return `<li>${i.content}</li>`;
+                                return `<li>${i.text || i}</li>`;
+                            }).join('');
+                            html += `<${tag}>${items}</${tag}>`;
+                            break;
+                        case 'quote':
+                            html += `<blockquote><p>${block.data.text || ''}</p>`;
+                            if (block.data.caption) html += `<cite>${block.data.caption}</cite>`;
+                            html += `</blockquote>`;
+                            break;
+                        case 'image':
+                            html += `<figure><img src="${block.data.file?.url || block.data.url || ''}" alt="${block.data.caption || ''}" />`;
+                            if (block.data.caption) html += `<figcaption>${block.data.caption}</figcaption>`;
+                            html += `</figure>`;
+                            break;
+                        case 'embed':
+                            html += `<div class="embed-wrap">${block.data.embed || ''}</div>`;
+                            break;
+                        case 'delimiter':
+                            html += '<hr />';
+                            break;
+                        default:
+                            if (block.data && block.data.text) {
+                                html += `<p>${block.data.text}</p>`;
+                            }
+                            break;
+                    }
+                }
+                return html;
+            },
+
+            setJson: async function (id, jsonData) {
+                const editor = this._instances[id];
+                if (!editor) return false;
+                try {
+                    const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+                    await editor.render(data);
+                    return true;
+                } catch (e) {
+                    console.error('[ContentOS Editor] setJson failed:', e);
+                    return false;
+                }
+            },
+
+            destroy: async function (id) {
+                const editor = this._instances[id];
+                if (!editor) return;
+                try {
+                    await editor.destroy();
+                } catch (e) {
+                    // ignore
+                }
+                delete this._instances[id];
+            },
+
+            insertImageBlock: async function (id, url, caption) {
+                const editor = this._instances[id];
+                if (!editor) return;
+                try {
+                    const index = editor.blocks.getCurrentBlockIndex() + 1;
+                    editor.blocks.insert('image', { file: { url: url }, caption: caption || '' }, undefined, index);
+                } catch (e) {
+                    console.error('[ContentOS Editor] insertImageBlock failed:', e);
+                }
+            }
+        };
+
+        // Auto-init: watch for editor holder divs appearing in the DOM
+        (function() {
+            let attempts = 0;
+            const poll = setInterval(async () => {
+                attempts++;
+                const holder = document.querySelector('.contentos-editorjs-holder');
+                if (holder && holder.id && !window.contentOsEditor._instances[holder.id] && holder.dataset.editorReady !== 'true') {
+                    clearInterval(poll);
+                    await window.contentOsEditor.init(holder.id);
+                } else if (attempts > 20) {
+                    clearInterval(poll);
+                }
+            }, 500);
+        })();
+
+        // Restructure inline TOC paragraphs into a bulleted list
+        // Called from Blazor after render since Blazor Server will undo DOM changes on re-render
+        window.contentOsToc = {
+            restructure: function () {
+                var found = false;
+                document.querySelectorAll('.article-read-body p, .article-read-card p').forEach(function (p) {
+                    if (p.dataset.tocProcessed) return;
+                    var links = p.querySelectorAll('a[href^="#"]');
+                    if (links.length < 2) return;
+                    var text = p.textContent.trim();
+                    if (!text.toLowerCase().startsWith('table of contents')) return;
+                    p.dataset.tocProcessed = 'true';
+                    found = true;
+
+                    var wrapper = document.createElement('div');
+                    wrapper.className = 'contentos-toc';
+                    wrapper.dataset.tocProcessed = 'true';
+                    var title = document.createElement('div');
+                    title.className = 'contentos-toc-title';
+                    title.textContent = 'Table of Contents';
+                    wrapper.appendChild(title);
+                    var list = document.createElement('ul');
+                    list.className = 'contentos-toc-list';
+                    links.forEach(function (link) {
+                        var li = document.createElement('li');
+                        var a = document.createElement('a');
+                        a.href = link.getAttribute('href');
+                        a.textContent = link.textContent;
+                        li.appendChild(a);
+                        list.appendChild(li);
+                    });
+                    wrapper.appendChild(list);
+                    p.replaceWith(wrapper);
+                });
+                if (found) console.log('[ContentOS TOC] Restructured successfully');
+                return found;
+            }
+        };
+
+        window.contentOsTheme.init();
+    </script>
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
+</body>
+</html>

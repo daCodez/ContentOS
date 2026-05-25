@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Editor.js Test v2</title>
+    <script src="/js/editorjs/editorjs.umd.js"></script>
+    <script src="/js/editorjs/header.umd.js"></script>
+    <script src="/js/editorjs/paragraph.umd.js"></script>
+    <script src="/js/editorjs/list.umd.js"></script>
+    <script src="/js/editorjs/quote.umd.js"></script>
+    <script src="/js/editorjs/image.umd.js"></script>
+    <script src="/js/editorjs/embed.umd.js"></script>
+    <script src="/js/editorjs/delimiter.umd.js"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+        #editor { border: 2px solid #4A90D9; min-height: 400px; padding: 16px; margin: 20px 0; background: #fafafa; }
+        #status { margin: 10px 0; padding: 12px; background: #f0f0f0; border-radius: 6px; font-size: 14px; }
+        #errors { color: red; margin: 10px 0; }
+        .hint { background: #fff3cd; padding: 12px; border-radius: 6px; margin: 10px 0; line-height: 1.6; }
+        .hint strong { color: #856404; }
+
+        /* CRITICAL: Do NOT limit toolbar width or hide overflow */
+        .ce-toolbar__content { max-width: none !important; }
+        .codex-editor { overflow: visible !important; }
+    </style>
+</head>
+<body>
+    <h1>Editor.js Test v2</h1>
+    <div class="hint">
+        <strong>How Editor.js toolbar works:</strong><br>
+        1. <strong>+</strong> button: Hover your mouse to the LEFT of any block — a blue <strong>+</strong> icon appears. Click it to add a new block.<br>
+        2. <strong>⋮</strong> button: Click INSIDE a block — a settings icon appears to the RIGHT. Click it for block options (delete, move, convert).<br>
+        3. <strong>Inline toolbar:</strong> Select/highlight text — a floating toolbar with Bold/Italic/Link appears.<br>
+        4. Press <strong>Enter</strong> at the end of a block to create a new paragraph, then type <strong>/</strong> to open the block type menu.
+    </div>
+    <div id="status">Checking scripts...</div>
+    <div id="errors"></div>
+    <div id="editor"></div>
+    <div style="margin-top:20px;">
+        <button onclick="saveContent()" style="padding:8px 16px;cursor:pointer;">Save (log to console)</button>
+        <button onclick="reInitEditor()" style="padding:8px 16px;cursor:pointer;margin-left:8px;">Re-initialize</button>
+    </div>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const errorsEl = document.getElementById('errors');
+
+        const checks = {
+            EditorJS: typeof window.EditorJS,
+            Header: typeof window.Header,
+            Paragraph: typeof window.Paragraph,
+            EditorjsList: typeof window.EditorjsList,
+            Quote: typeof window.Quote,
+            ImageTool: typeof window.ImageTool,
+            Embed: typeof window.Embed,
+            Delimiter: typeof window.Delimiter
+        };
+
+        statusEl.innerHTML = '<strong>Script globals:</strong><br>' + 
+            Object.entries(checks).map(([k,v]) => `${k}: <span style="color:${v==='function'||v==='object'?'green':'red'}">${v}</span>`).join('<br>');
+
+        let hasErrors = false;
+        Object.entries(checks).forEach(([k,v]) => {
+            if (v === 'undefined') {
+                errorsEl.innerHTML += `Missing: ${k}<br>`;
+                hasErrors = true;
+            }
+        });
+
+        var editor = null;
+
+        function initEditor(data) {
+            if (editor) {
+                editor.destroy();
+                editor = null;
+            }
+            const holder = document.getElementById('editor');
+            holder.innerHTML = '';
+
+            try {
+                editor = new EditorJS({
+                    holder: 'editor',
+                    data: data || {
+                        blocks: [
+                            { type: 'header', data: { text: 'Click this heading', level: 2 } },
+                            { type: 'paragraph', data: { text: 'Hover to the LEFT of this paragraph — you should see a blue + button. Click inside this block to see the ⋮ settings button on the right. Select some text to see the inline toolbar.' } },
+                            { type: 'list', data: { style: 'unordered', items: ['Try clicking the + button', 'Try the ⋮ settings button', 'Try selecting text for bold/italic'] } }
+                        ]
+                    },
+                    autofocus: true,
+                    placeholder: 'Type / to choose a block...',
+                    tools: {
+                        header: { class: Header, config: { levels: [2, 3, 4], defaultLevel: 2 }, inlineToolbar: true },
+                        paragraph: { class: Paragraph, inlineToolbar: true },
+                        list: { class: EditorjsList, inlineToolbar: true },
+                        quote: { class: Quote, inlineToolbar: true },
+                        image: ImageTool,
+                        embed: Embed,
+                        delimiter: Delimiter
+                    },
+                    inlineToolbar: ['bold', 'italic', 'link'],
+                    onReady: function() {
+                        statusEl.innerHTML += '<br><span style="color:green;font-weight:bold">✓ Editor.js initialized successfully!</span>';
+                        console.log('[TEST] Editor ready. Check for + and ⋮ buttons.');
+                    },
+                    onChange: function(api, event) {
+                        console.log('[TEST] Content changed');
+                    }
+                });
+            } catch (e) {
+                errorsEl.innerHTML += 'Init error: ' + e.message + '<br>' + e.stack;
+            }
+        }
+
+        if (!hasErrors) {
+            initEditor();
+        }
+
+        function saveContent() {
+            if (!editor) { console.log('No editor instance'); return; }
+            editor.save().then(data => {
+                console.log('Editor content:', JSON.stringify(data, null, 2));
+                alert('Content saved to console. ' + data.blocks.length + ' blocks.');
+            }).catch(e => {
+                console.error('Save error:', e);
+            });
+        }
+
+        function reInitEditor() {
+            initEditor();
+        }
+    </script>
+</body>
+</html>

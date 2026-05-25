@@ -1,0 +1,14 @@
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.ServiceDefaults/bin/Debug/net10.0/ContentOS.ServiceDefaults.deps.json
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.ServiceDefaults/bin/Debug/net10.0/ContentOS.ServiceDefaults.dll
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.ServiceDefaults/bin/Debug/net10.0/ContentOS.ServiceDefaults.pdb
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.ServiceDefaults/obj/Debug/net10.0/ContentOS.ServiceDefaults.csproj.AssemblyReference.cache
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.ServiceDefaults/obj/Debug/net10.0/ContentOS.ServiceDefaults.GeneratedMSBuildEditorConfig.editorconfig
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.ServiceDefaults/obj/Debug/net10.0/ContentOS.ServiceDefaults.AssemblyInfoInputs.cache
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.ServiceDefaults/obj/Debug/net10.0/ContentOS.ServiceDefaults.AssemblyInfo.cs
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.ServiceDefaults/obj/Debug/net10.0/ContentOS.ServiceDefaults.csproj.CoreCompileInputs.cache
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.ServiceDefaults/obj/Debug/net10.0/Aspire/references/.ProjectMetadata.g.cs
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.ServiceDefaults/obj/Debug/net10.0/Aspire/references/_AppHost.ProjectMetadata.g.cs
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.ServiceDefaults/obj/Debug/net10.0/ContentOS.ServiceDefaults.dll
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.ServiceDefaults/obj/Debug/net10.0/refint/ContentOS.ServiceDefaults.dll
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.ServiceDefaults/obj/Debug/net10.0/ContentOS.ServiceDefaults.pdb
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.ServiceDefaults/obj/Debug/net10.0/ref/ContentOS.ServiceDefaults.dll

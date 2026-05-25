@@ -1,0 +1,275 @@
+is_global = true
+build_property.TargetFramework = net10.0
+build_property.TargetFrameworkIdentifier = .NETCoreApp
+build_property.TargetFrameworkVersion = v10.0
+build_property.TargetPlatformMinVersion = 
+build_property.UsingMicrosoftNETSdkWeb = true
+build_property.ProjectTypeGuids = 
+build_property.InvariantGlobalization = 
+build_property.PlatformNeutralAssembly = 
+build_property.EnforceExtendedAnalyzerRules = 
+build_property._SupportedPlatformList = Linux,macOS,Windows
+build_property.RootNamespace = ContentOS.Web
+build_property.RootNamespace = ContentOS.Web
+build_property.ProjectDir = /home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = 
+build_property.RazorLangVersion = 9.0
+build_property.SupportLocalizedComponentNames = 
+build_property.GenerateRazorMetadataSourceChecksumAttributes = 
+build_property.MSBuildProjectDirectory = /home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web
+build_property._RazorSourceGeneratorDebug = 
+build_property.EffectiveAnalysisLevelStyle = 10.0
+build_property.EnableCodeStyleSeverity = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/AiInput.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9BaUlucHV0LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/App.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9BcHAucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/ArticleToolbar.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9BcnRpY2xlVG9vbGJhci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/AvatarStack.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9BdmF0YXJTdGFjay5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/ChatComposer.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9DaGF0Q29tcG9zZXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/CheckboxCard.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9DaGVja2JveENhcmQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/ChecklistItem.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9DaGVja2xpc3RJdGVtLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/CommandPalette.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9Db21tYW5kUGFsZXR0ZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/ComponentSection.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9Db21wb25lbnRTZWN0aW9uLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/DataTable.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9EYXRhVGFibGUucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/DatePicker.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9EYXRlUGlja2VyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Dialog.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9EaWFsb2cucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/DropdownMenu.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9Ecm9wZG93bk1lbnUucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/HoverCard.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9Ib3ZlckNhcmQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/InlineNotice.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9JbmxpbmVOb3RpY2UucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/InputGroup.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9JbnB1dEdyb3VwLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/LabelDivider.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9MYWJlbERpdmlkZXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/ModelSelectorPill.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9Nb2RlbFNlbGVjdG9yUGlsbC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/NumberedPagination.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9OdW1iZXJlZFBhZ2luYXRpb24ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/NumberStepper.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9OdW1iZXJTdGVwcGVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/OptimizationGauge.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9PcHRpbWl6YXRpb25HYXVnZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Pages/ArticleApproval.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9BcnRpY2xlQXBwcm92YWwucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Pages/ArticleReview.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9BcnRpY2xlUmV2aWV3LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Pages/ArticleRun.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9BcnRpY2xlUnVuLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Pages/ArticleRuns.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9BcnRpY2xlUnVucy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Pages/Articles.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9BcnRpY2xlcy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Pages/ArticleView.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9BcnRpY2xlVmlldy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Pages/ComponentLibrary.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Db21wb25lbnRMaWJyYXJ5LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Pages/ContentLedger.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Db250ZW50TGVkZ2VyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Pages/Coordinator.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Db29yZGluYXRvci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Pages/Error.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9FcnJvci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Pages/Home.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Ib21lLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Pages/IdeaPipelineQueue.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9JZGVhUGlwZWxpbmVRdWV1ZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Pages/NotFound.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Ob3RGb3VuZC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Pages/ResearchIdeaDetail.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9SZXNlYXJjaElkZWFEZXRhaWwucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Pages/ResearchInbox.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9SZXNlYXJjaEluYm94LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Pages/Settings.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9TZXR0aW5ncy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Pages/Sites.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9TaXRlcy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Pages/WorkflowArticlePreview.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Xb3JrZmxvd0FydGljbGVQcmV2aWV3LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Pages/WorkflowDefinitionEditor.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Xb3JrZmxvd0RlZmluaXRpb25FZGl0b3IucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Pages/WorkflowJobDetail.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Xb3JrZmxvd0pvYkRldGFpbC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Pages/WorkflowQueue.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Xb3JrZmxvd1F1ZXVlLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/PaymentCard.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYXltZW50Q2FyZC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Popover.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9Qb3BvdmVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/ProcessingCard.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9Qcm9jZXNzaW5nQ2FyZC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/RadioCards.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9SYWRpb0NhcmRzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/RangeSlider.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9SYW5nZVNsaWRlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Routes.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9Sb3V0ZXMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/SearchWithCount.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9TZWFyY2hXaXRoQ291bnQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/SelectList.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9TZWxlY3RMaXN0LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Sheet.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9TaGVldC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/SkeletonLoader.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9Ta2VsZXRvbkxvYWRlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/StatTrendCard.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9TdGF0VHJlbmRDYXJkLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/StatusPills.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9TdGF0dXNQaWxscy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/SuccessBanner.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9TdWNjZXNzQmFubmVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/SurveyQuestion.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9TdXJ2ZXlRdWVzdGlvbi5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/ToastContainer.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9Ub2FzdENvbnRhaW5lci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/ToggleSwitch.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9Ub2dnbGVTd2l0Y2gucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Tooltip.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9Ub29sdGlwLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/_Imports.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9fSW1wb3J0cy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Layout/MainLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9MYXlvdXQvTWFpbkxheW91dC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = b-byk4w7621x
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Layout/NavMenu.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9MYXlvdXQvTmF2TWVudS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = b-m8c7a3i4ds
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Web/Components/Layout/ReconnectModal.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9MYXlvdXQvUmVjb25uZWN0TW9kYWwucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-a0feal3h3k

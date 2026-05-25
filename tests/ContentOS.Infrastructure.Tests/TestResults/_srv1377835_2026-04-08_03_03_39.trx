@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="694c20d5-8659-431b-8579-ff704f4669f0" name="@srv1377835 2026-04-08 03:03:39" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-04-08T03:03:39.9532577+00:00" queuing="2026-04-08T03:03:39.9532577+00:00" start="2026-04-08T03:03:37.1266636+00:00" finish="2026-04-08T03:03:39.9651501+00:00" />
+  <TestSettings name="default" id="ccaf94e0-b9f8-4ed1-aac7-dd1afe0209e1">
+    <Deployment runDeploymentRoot="_srv1377835_2026-04-08_03_03_39" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="1b07417d-fcca-4ab3-9fbb-56fcd2837abb" testId="4fa68d58-3dd5-e05a-5eab-0bbc5155e49c" testName="ApproveIdeaAndCreateWorkflowAsync_CreatesJobAndRuntimeTasks" computerName="srv1377835" duration="00:00:01.7983350" startTime="2026-04-08T03:03:38.0230349+00:00" endTime="2026-04-08T03:03:39.8212873+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="1b07417d-fcca-4ab3-9fbb-56fcd2837abb" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="ApproveIdeaAndCreateWorkflowAsync_CreatesJobAndRuntimeTasks" storage="/home/jarvis_bot/.openclaw/workspace/contentos/tests/contentos.infrastructure.tests/bin/debug/net10.0/contentos.infrastructure.tests.dll" id="4fa68d58-3dd5-e05a-5eab-0bbc5155e49c">
+      <Execution id="1b07417d-fcca-4ab3-9fbb-56fcd2837abb" />
+      <TestMethod codeBase="/home/jarvis_bot/.openclaw/workspace/ContentOS/tests/ContentOS.Infrastructure.Tests/bin/Debug/net10.0/ContentOS.Infrastructure.Tests.dll" adapterTypeName="executor://nunit3testexecutor/" className="ContentOS.Infrastructure.Tests.WorkflowBootstrapServiceTests" name="ApproveIdeaAndCreateWorkflowAsync_CreatesJobAndRuntimeTasks" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="4fa68d58-3dd5-e05a-5eab-0bbc5155e49c" executionId="1b07417d-fcca-4ab3-9fbb-56fcd2837abb" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="1" executed="1" passed="1" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>NUnit Adapter 4.6.0.0: Test execution started
+Running all tests in /home/jarvis_bot/.openclaw/workspace/ContentOS/tests/ContentOS.Infrastructure.Tests/bin/Debug/net10.0/ContentOS.Infrastructure.Tests.dll
+   NUnit3TestExecutor discovered 1 of 1 NUnit test cases using Current Discovery mode, Non-Explicit run
+NUnit Adapter 4.6.0.0: Test execution complete
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

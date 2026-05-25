@@ -1,0 +1,156 @@
+@page "/idea-pipeline"
+
+@using ContentOS.Application.Commands
+@using ContentOS.Application.DTOs
+@using ContentOS.Application.Queries
+@using MediatR
+@inject IMediator Mediator
+@inject NavigationManager Navigation
+
+<PageTitle>Idea Pipeline | ContentOS</PageTitle>
+
+<div class="mission-control-container kingadmin-dashboard">
+    <div class="crumb-row">
+        <span>Home</span>
+        <span class="crumb-sep">›</span>
+        <span>Idea Pipeline</span>
+    </div>
+
+    <div class="page-header-row">
+        <div>
+            <h1 class="page-title">IDEA PIPELINE</h1>
+            <p class="page-subtitle">Review scored ideas, approve the winners, and launch article workflows from clean idea inputs.</p>
+        </div>
+        <div class="actions-group">
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+                <input type="text" @bind="NicheInput" placeholder="Niche (e.g. personal finance, travel, fitness)" 
+                       style="padding:0.4rem 0.75rem; border:1px solid var(--border, #ddd); border-radius:4px; font-size:0.85rem; width:280px;" />
+                <button class="btn-primary" @onclick="GenerateIdeasAsync" disabled="@IsGenerating">@(IsGenerating ? "Generating..." : "Generate Ideas")</button>
+            </div>
+            @if (!string.IsNullOrEmpty(StatusMessage))
+            {
+                <span class="save-status">@StatusMessage</span>
+            }
+        </div>
+    </div>
+
+    <section class="dashboard-card compact-card">
+        <div class="widget-title">Idea Queue</div>
+        <table class="architect-table compact-table">
+            <thead>
+                <tr>
+                    <th>Idea</th>
+                    <th>Problem</th>
+                    <th>Audience</th>
+                    <th>Score</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Ideas.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-center">No idea records yet. Enter a niche above and click Generate Ideas.</td></tr>
+                }
+                else
+                {
+                    @foreach (var idea in Ideas)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@idea.IdeaTitle</strong>
+                                <div class="row-meta">@idea.SearchIntent • @idea.UniquenessAngle</div>
+                            </td>
+                            <td>@idea.ReaderProblem</td>
+                            <td>@idea.AudienceType</td>
+                            <td>@idea.PriorityScore.ToString("0.00")</td>
+                            <td>@idea.Status</td>
+                            <td class="action-cell">
+                                @if (idea.Status.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <button class="btn-primary" @onclick="() => ApproveAsync(idea.Id)">Approve</button>
+                                    <button class="btn-secondary" @onclick="() => RejectAsync(idea.Id)">Reject</button>
+                                }
+                                @if (idea.ArticleWorkflowRunId.HasValue)
+                                {
+                                    <a class="btn-link" href="@($"/article-run/{idea.ArticleWorkflowRunId.Value}")">Open Article Run</a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </section>
+</div>
+
+@code {
+    private List<IdeaRecordDto> Ideas { get; set; } = new();
+    private bool IsGenerating { get; set; }
+    private string StatusMessage { get; set; } = string.Empty;
+    private string NicheInput { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Ideas = (await Mediator.Send(new GetIdeaQueueQuery())).ToList();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error loading ideas: {ex.Message}";
+        }
+    }
+
+    private async Task ApproveAsync(Guid id)
+    {
+        try
+        {
+            var runId = await Mediator.Send(new ApproveIdeaRecordCommand(id, "Eric"));
+            Navigation.NavigateTo($"/article-run/{runId}", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error approving: {ex.Message}";
+        }
+    }
+
+    private async Task RejectAsync(Guid id)
+    {
+        try
+        {
+            await Mediator.Send(new RejectIdeaRecordCommand(id, "Eric"));
+            Ideas = (await Mediator.Send(new GetIdeaQueueQuery())).ToList();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error rejecting: {ex.Message}";
+        }
+    }
+
+    private async Task GenerateIdeasAsync()
+    {
+        try
+        {
+            IsGenerating = true;
+            StatusMessage = string.Empty;
+            var niche = NicheInput?.Trim();
+            if (string.IsNullOrWhiteSpace(niche))
+            {
+                StatusMessage = "Enter a niche before generating ideas.";
+                return;
+            }
+            await Mediator.Send(new GenerateIdeasCommand(niche));
+            Ideas = (await Mediator.Send(new GetIdeaQueueQuery())).ToList();
+            StatusMessage = $"Ideas generated for \"{niche}\".";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error generating ideas: {ex.Message}";
+        }
+        finally
+        {
+            IsGenerating = false;
+        }
+    }
+}

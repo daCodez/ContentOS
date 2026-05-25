@@ -1,0 +1,98 @@
+@page "/article-runs"
+
+@using ContentOS.Application.DTOs
+@using ContentOS.Application.Queries
+@using MediatR
+@inject IMediator Mediator
+
+<PageTitle>Article Runs | ContentOS</PageTitle>
+
+<div class="mission-control-container kingadmin-dashboard">
+    <div class="crumb-row">
+        <span>Home</span>
+        <span class="crumb-sep">›</span>
+        <a href="/idea-pipeline">Ideas</a>
+        <span class="crumb-sep">›</span>
+        <span>Article Runs</span>
+    </div>
+
+    <div class="page-header-row">
+        <div>
+            <h1 class="page-title">ARTICLE RUNS</h1>
+            <p class="page-subtitle">All article workflow runs — from draft through QA.</p>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <div class="workflow-task-error-banner">@Error</div>
+    }
+
+    <section class="dashboard-card compact-card">
+        <div class="widget-title">Runs</div>
+        <table class="architect-table compact-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Status</th>
+                    <th>Version</th>
+                    <th>Started</th>
+                    <th>Completed</th>
+                    <th>Error</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Runs.Count == 0)
+                {
+                    <tr><td colspan="7" class="text-center">No article runs yet. Approve an idea from the pipeline to create one.</td></tr>
+                }
+                else
+                {
+                    @foreach (var run in Runs)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@(run.IdeaTitle ?? "Untitled")</strong>
+                                @if (!string.IsNullOrWhiteSpace(run.ReaderProblem))
+                                {
+                                    <div class="row-meta">@run.ReaderProblem</div>
+                                }
+                            </td>
+                            <td>
+                                <span class="status-badge @(run.Status == "Completed" ? "status-approved" : run.Status == "Failed" ? "status-danger" : run.Status == "InProgress" ? "status-pending" : "status-pending")">
+                                    @run.Status
+                                </span>
+                            </td>
+                            <td>v@(run.Version)</td>
+                            <td>@(run.StartedUtc?.ToString("MMM dd HH:mm") ?? "—")</td>
+                            <td>@(run.CompletedUtc?.ToString("MMM dd HH:mm") ?? "—")</td>
+                            <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="@run.ErrorMessage">@(run.ErrorMessage ?? "—")</td>
+                            <td class="action-cell">
+                                <a class="btn-link" href="@($"/article-run/{run.Id}")">View</a>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </section>
+</div>
+
+@code {
+    private List<WorkflowDefinitionRunDto> Runs { get; set; } = new();
+    private string Error = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var result = await Mediator.Send(new GetArticleRunsQuery());
+            Runs = result.OrderByDescending(r => r.StartedUtc ?? DateTime.MinValue).ToList();
+        }
+        catch (Exception ex)
+        {
+            Error = $"Failed to load runs: {ex.Message}";
+        }
+    }
+}

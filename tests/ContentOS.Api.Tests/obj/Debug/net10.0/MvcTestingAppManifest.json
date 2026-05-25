@@ -1,0 +1,7 @@
+{
+  "ContentOS.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "\/home\/jarvis_bot\/.openclaw\/workspace\/ContentOS\/src\/ContentOS.Api",
+  "ContentOS.Application, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "\/home\/jarvis_bot\/.openclaw\/workspace\/ContentOS\/src\/ContentOS.Application",
+  "ContentOS.Domain, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "\/home\/jarvis_bot\/.openclaw\/workspace\/ContentOS\/src\/ContentOS.Domain",
+  "ContentOS.Infrastructure, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "\/home\/jarvis_bot\/.openclaw\/workspace\/ContentOS\/src\/ContentOS.Infrastructure",
+  "ContentOS.ServiceDefaults, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "\/home\/jarvis_bot\/.openclaw\/workspace\/ContentOS\/src\/ContentOS.ServiceDefaults"
+}

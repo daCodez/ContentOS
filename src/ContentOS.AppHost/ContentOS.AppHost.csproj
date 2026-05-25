@@ -1,0 +1,16 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.2.2">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsAspireHost>true</IsAspireHost>
+    <UserSecretsId>contentos-apphost</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ContentOS.Api\ContentOS.Api.csproj" />
+    <ProjectReference Include="..\ContentOS.Web\ContentOS.Web.csproj" />
+    <ProjectReference Include="..\ContentOS.ServiceDefaults\ContentOS.ServiceDefaults.csproj" />
+  </ItemGroup>
+</Project>

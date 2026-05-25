@@ -1,0 +1,2060 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ContentOS — Components</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+ /* =========================================================
+ SHADCN/UI DESIGN TOKENS
+ ========================================================= */
+ :root {
+ --background: 0 0% 100%;
+ --foreground: 222 47% 11%;
+ --card: 0 0% 100%;
+ --card-foreground: 222 47% 11%;
+ --primary: 222 47% 11%;
+ --primary-foreground: 210 40% 98%;
+ --secondary: 210 40% 96%;
+ --secondary-foreground: 222 47% 11%;
+ --muted: 210 40% 96%;
+ --muted-foreground: 215 16% 47%;
+ --accent: 210 40% 96%;
+ --accent-foreground: 222 47% 11%;
+ --destructive: 0 72% 51%;
+ --destructive-foreground: 210 40% 98%;
+ --border: 214 32% 91%;
+ --input: 214 32% 91%;
+ --ring: 222 47% 11%;
+
+ --status-idea: 215 16% 47%;
+ --status-running: 217 91% 60%;
+ --status-review: 38 92% 50%;
+ --status-ready: 142 71% 45%;
+ --status-failed: 0 72% 51%;
+ --status-published: 262 83% 58%;
+
+ --radius: 0.5rem;
+ }
+
+ [data-theme="dark"] {
+ --background: 222 47% 5%;
+ --foreground: 210 40% 98%;
+ --card: 222 47% 7%;
+ --card-foreground: 210 40% 98%;
+ --primary: 210 40% 98%;
+ --primary-foreground: 222 47% 11%;
+ --secondary: 217 33% 12%;
+ --secondary-foreground: 210 40% 98%;
+ --muted: 217 33% 12%;
+ --muted-foreground: 215 20% 65%;
+ --accent: 217 33% 14%;
+ --accent-foreground: 210 40% 98%;
+ --destructive: 0 63% 45%;
+ --destructive-foreground: 210 40% 98%;
+ --border: 217 33% 15%;
+ --input: 217 33% 15%;
+ --ring: 213 27% 84%;
+
+ --status-idea: 215 20% 65%;
+ --status-running: 217 91% 70%;
+ --status-review: 38 92% 60%;
+ --status-ready: 142 71% 55%;
+ --status-failed: 0 72% 60%;
+ --status-published: 262 83% 68%;
+ }
+
+ * { box-sizing: border-box; margin: 0; padding: 0; }
+
+ html, body {
+ background: hsl(var(--background));
+ color: hsl(var(--foreground));
+ font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+ font-size: 14px;
+ line-height: 1.5;
+ -webkit-font-smoothing: antialiased;
+ transition: background 0.15s, color 0.15s;
+ }
+
+ /* ---------- LAYOUT ---------- */
+ .page {
+ max-width: 1100px;
+ margin: 0 auto;
+ padding: 32px 28px 80px;
+ }
+
+ .page-header {
+ display: flex;
+ align-items: flex-end;
+ gap: 16px;
+ margin-bottom: 32px;
+ padding-bottom: 24px;
+ border-bottom: 1px solid hsl(var(--border));
+ }
+ .page-title {
+ font-size: 28px;
+ font-weight: 700;
+ letter-spacing: -0.025em;
+ margin-bottom: 6px;
+ }
+ .page-description {
+ font-size: 15px;
+ color: hsl(var(--muted-foreground));
+ max-width: 600px;
+ }
+
+ /* Theme toggle (header right) */
+ .header-actions {
+ margin-left: auto;
+ display: flex;
+ gap: 8px;
+ }
+ .toggle-group {
+ display: inline-flex;
+ background: hsl(var(--muted));
+ border: 1px solid hsl(var(--border));
+ border-radius: calc(var(--radius) - 2px);
+ padding: 2px;
+ height: 34px;
+ }
+ .toggle-group-item {
+ background: transparent;
+ border: none;
+ padding: 0 8px;
+ border-radius: calc(var(--radius) - 4px);
+ cursor: pointer;
+ color: hsl(var(--muted-foreground));
+ display: grid;
+ place-items: center;
+ transition: background 0.12s, color 0.12s;
+ min-width: 30px;
+ }
+ .toggle-group-item:hover { color: hsl(var(--foreground)); }
+ .toggle-group-item.active {
+ background: hsl(var(--background));
+ color: hsl(var(--foreground));
+ box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+ }
+ .toggle-group-item .icon { width: 14px; height: 14px; }
+
+ /* Section */
+ .section {
+ margin-bottom: 56px;
+ }
+ .section-head {
+ margin-bottom: 16px;
+ display: flex;
+ align-items: baseline;
+ gap: 12px;
+ }
+ .section-title {
+ font-size: 18px;
+ font-weight: 600;
+ letter-spacing: -0.015em;
+ }
+ .section-tag {
+ font-family: 'JetBrains Mono', monospace;
+ font-size: 11px;
+ color: hsl(var(--muted-foreground));
+ background: hsl(var(--muted));
+ border: 1px solid hsl(var(--border));
+ padding: 1px 7px;
+ border-radius: 4px;
+ }
+ .section-meta {
+ margin-left: auto;
+ font-size: 12.5px;
+ color: hsl(var(--muted-foreground));
+ }
+ .section-desc {
+ font-size: 13.5px;
+ color: hsl(var(--muted-foreground));
+ margin-top: 6px;
+ margin-bottom: 16px;
+ max-width: 700px;
+ }
+
+ .demo-card {
+ background: hsl(var(--card));
+ border: 1px solid hsl(var(--border));
+ border-radius: var(--radius);
+ padding: 36px 28px;
+ display: flex;
+ flex-wrap: wrap;
+ align-items: center;
+ justify-content: center;
+ gap: 16px;
+ min-height: 140px;
+ position: relative;
+ }
+ .demo-card.align-start { align-items: flex-start; }
+ .demo-card.col {
+ flex-direction: column;
+ align-items: stretch;
+ padding: 24px;
+ }
+
+ /* =========================================================
+ BUTTONS
+ ========================================================= */
+ .btn {
+ display: inline-flex;
+ align-items: center;
+ justify-content: center;
+ gap: 6px;
+ padding: 0 14px;
+ height: 34px;
+ border-radius: calc(var(--radius) - 2px);
+ font-size: 13px;
+ font-weight: 500;
+ font-family: inherit;
+ cursor: pointer;
+ border: 1px solid transparent;
+ transition: background 0.12s, border-color 0.12s, opacity 0.12s;
+ text-decoration: none;
+ white-space: nowrap;
+ line-height: 1;
+ }
+ .btn:focus-visible {
+ outline: none;
+ box-shadow: 0 0 0 2px hsl(var(--ring) / 0.4);
+ }
+ .btn-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border-color: hsl(var(--primary)); }
+ .btn-primary:hover { opacity: 0.9; }
+ .btn-secondary { background: hsl(var(--secondary)); color: hsl(var(--secondary-foreground)); }
+ .btn-outline { background: hsl(var(--background)); color: hsl(var(--foreground)); border-color: hsl(var(--border)); }
+ .btn-outline:hover { background: hsl(var(--accent)); }
+ .btn-ghost { background: transparent; color: hsl(var(--foreground)); }
+ .btn-ghost:hover { background: hsl(var(--accent)); }
+ .btn-destructive { background: hsl(var(--destructive)); color: hsl(var(--destructive-foreground)); border-color: hsl(var(--destructive)); }
+ .btn-destructive:hover { opacity: 0.9; }
+ .btn-sm { height: 28px; padding: 0 10px; font-size: 12.5px; border-radius: calc(var(--radius) - 4px); }
+ .btn-icon { width: 34px; height: 34px; padding: 0; }
+ .btn-icon-sm { width: 28px; height: 28px; padding: 0; }
+ .btn .icon { width: 14px; height: 14px; }
+
+ /* SPLIT BUTTON with dropdown */
+ .split-btn { display: inline-flex; }
+ .split-btn .btn:first-child {
+ border-top-right-radius: 0;
+ border-bottom-right-radius: 0;
+ }
+ .split-btn .btn:last-child {
+ border-top-left-radius: 0;
+ border-bottom-left-radius: 0;
+ padding: 0 8px;
+ border-left: 1px solid hsl(var(--primary-foreground) / 0.18);
+ }
+
+ /* BADGES */
+ .badge {
+ display: inline-flex;
+ align-items: center;
+ gap: 5px;
+ padding: 2px 9px;
+ border-radius: 999px;
+ font-size: 11.5px;
+ font-weight: 500;
+ line-height: 1.4;
+ border: 1px solid transparent;
+ }
+ .badge::before {
+ content: '';
+ width: 5px; height: 5px;
+ border-radius: 50%;
+ background: currentColor;
+ }
+ .badge-running { background: hsl(var(--status-running) / 0.1); color: hsl(var(--status-running)); border-color: hsl(var(--status-running) / 0.2); }
+ .badge-ready { background: hsl(var(--status-ready) / 0.12); color: hsl(var(--status-ready)); border-color: hsl(var(--status-ready) / 0.25); }
+ .badge-review { background: hsl(var(--status-review) / 0.12); color: hsl(var(--status-review)); border-color: hsl(var(--status-review) / 0.25); }
+ .badge-failed { background: hsl(var(--status-failed) / 0.1); color: hsl(var(--status-failed)); border-color: hsl(var(--status-failed) / 0.2); }
+
+ /* INPUTS */
+ .input {
+ width: 100%;
+ background: hsl(var(--background));
+ border: 1px solid hsl(var(--input));
+ border-radius: calc(var(--radius) - 2px);
+ padding: 0 12px;
+ height: 34px;
+ color: hsl(var(--foreground));
+ font-size: 13.5px;
+ font-family: inherit;
+ transition: border-color 0.15s, box-shadow 0.15s;
+ }
+ .input:focus {
+ outline: none;
+ border-color: hsl(var(--ring));
+ box-shadow: 0 0 0 2px hsl(var(--ring) / 0.1);
+ }
+
+ /* =========================================================
+ 1. COMMAND PALETTE (⌘K)
+ ========================================================= */
+ .cmd-trigger {
+ display: inline-flex;
+ align-items: center;
+ gap: 10px;
+ background: hsl(var(--background));
+ border: 1px solid hsl(var(--input));
+ border-radius: calc(var(--radius) - 2px);
+ padding: 0 12px;
+ height: 36px;
+ cursor: pointer;
+ color: hsl(var(--muted-foreground));
+ font-size: 13.5px;
+ min-width: 280px;
+ transition: border-color 0.12s;
+ font-family: inherit;
+ }
+ .cmd-trigger:hover { border-color: hsl(var(--foreground) / 0.3); }
+ .cmd-trigger .cmd-icon { width: 14px; height: 14px; }
+ .cmd-trigger .cmd-text { flex: 1; text-align: left; }
+ .cmd-trigger kbd {
+ font-family: 'JetBrains Mono', monospace;
+ font-size: 10.5px;
+ color: hsl(var(--muted-foreground));
+ background: hsl(var(--muted));
+ padding: 1px 6px;
+ border-radius: 4px;
+ border: 1px solid hsl(var(--border));
+ }
+
+ /* Command dialog overlay */
+ .cmd-overlay {
+ display: none;
+ position: fixed;
+ inset: 0;
+ background: rgba(0,0,0,0.55);
+ z-index: 200;
+ align-items: flex-start;
+ justify-content: center;
+ padding-top: 18vh;
+ backdrop-filter: blur(2px);
+ }
+ .cmd-overlay.open { display: flex; }
+ .cmd-dialog {
+ width: 600px;
+ max-width: 90vw;
+ background: hsl(var(--card));
+ border: 1px solid hsl(var(--border));
+ border-radius: var(--radius);
+ box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+ overflow: hidden;
+ animation: cmd-in 0.16s ease;
+ }
+ @keyframes cmd-in {
+ from { opacity: 0; transform: translateY(-8px); }
+ to { opacity: 1; transform: translateY(0); }
+ }
+ .cmd-input-wrap {
+ display: flex;
+ align-items: center;
+ gap: 12px;
+ padding: 14px 18px;
+ border-bottom: 1px solid hsl(var(--border));
+ }
+ .cmd-input-wrap .icon { width: 16px; height: 16px; color: hsl(var(--muted-foreground)); }
+ .cmd-input {
+ flex: 1;
+ background: transparent;
+ border: none;
+ outline: none;
+ color: hsl(var(--foreground));
+ font-size: 15px;
+ font-family: inherit;
+ }
+ .cmd-input::placeholder { color: hsl(var(--muted-foreground)); }
+ .cmd-list {
+ max-height: 380px;
+ overflow-y: auto;
+ padding: 8px;
+ }
+ .cmd-group-label {
+ font-size: 11px;
+ font-weight: 600;
+ color: hsl(var(--muted-foreground));
+ text-transform: uppercase;
+ letter-spacing: 0.06em;
+ padding: 10px 12px 6px;
+ }
+ .cmd-item {
+ display: flex;
+ align-items: center;
+ gap: 10px;
+ padding: 8px 12px;
+ border-radius: calc(var(--radius) - 4px);
+ cursor: pointer;
+ color: hsl(var(--foreground));
+ font-size: 13.5px;
+ }
+ .cmd-item:hover, .cmd-item.selected {
+ background: hsl(var(--accent));
+ }
+ .cmd-item .icon {
+ width: 14px; height: 14px;
+ color: hsl(var(--muted-foreground));
+ }
+ .cmd-item-shortcut {
+ margin-left: auto;
+ font-family: 'JetBrains Mono', monospace;
+ font-size: 11px;
+ color: hsl(var(--muted-foreground));
+ }
+ .cmd-empty {
+ padding: 32px 16px;
+ text-align: center;
+ color: hsl(var(--muted-foreground));
+ font-size: 13px;
+ }
+ .cmd-footer {
+ display: flex;
+ align-items: center;
+ gap: 16px;
+ padding: 8px 14px;
+ border-top: 1px solid hsl(var(--border));
+ font-size: 11.5px;
+ color: hsl(var(--muted-foreground));
+ background: hsl(var(--muted) / 0.5);
+ }
+ .cmd-footer kbd {
+ font-family: 'JetBrains Mono', monospace;
+ background: hsl(var(--background));
+ border: 1px solid hsl(var(--border));
+ padding: 1px 5px;
+ border-radius: 3px;
+ font-size: 10.5px;
+ margin-right: 4px;
+ }
+
+ /* =========================================================
+ 2. DROPDOWN MENU
+ ========================================================= */
+ .menu-anchor { position: relative; display: inline-block; }
+ .menu {
+ position: absolute;
+ top: calc(100% + 4px);
+ background: hsl(var(--card));
+ border: 1px solid hsl(var(--border));
+ border-radius: calc(var(--radius) - 2px);
+ box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+ padding: 4px;
+ min-width: 220px;
+ z-index: 50;
+ display: none;
+ animation: menu-in 0.12s ease;
+ }
+ .menu.open { display: block; }
+ .menu.right { right: 0; }
+ @keyframes menu-in {
+ from { opacity: 0; transform: translateY(-4px); }
+ to { opacity: 1; transform: translateY(0); }
+ }
+ .menu-label {
+ font-size: 11px;
+ font-weight: 600;
+ color: hsl(var(--muted-foreground));
+ text-transform: uppercase;
+ letter-spacing: 0.06em;
+ padding: 8px 10px 4px;
+ }
+ .menu-item {
+ display: flex;
+ align-items: center;
+ gap: 10px;
+ padding: 7px 10px;
+ border-radius: calc(var(--radius) - 4px);
+ cursor: pointer;
+ color: hsl(var(--foreground));
+ font-size: 13px;
+ background: transparent;
+ border: none;
+ width: 100%;
+ text-align: left;
+ font-family: inherit;
+ }
+ .menu-item:hover { background: hsl(var(--accent)); }
+ .menu-item .icon { width: 14px; height: 14px; color: hsl(var(--muted-foreground)); }
+ .menu-item-shortcut {
+ margin-left: auto;
+ font-family: 'JetBrains Mono', monospace;
+ font-size: 11px;
+ color: hsl(var(--muted-foreground));
+ }
+ .menu-item.destructive { color: hsl(var(--destructive)); }
+ .menu-item.destructive .icon { color: hsl(var(--destructive)); }
+ .menu-item.destructive:hover { background: hsl(var(--destructive) / 0.1); }
+ .menu-separator {
+ height: 1px;
+ background: hsl(var(--border));
+ margin: 4px 0;
+ }
+
+ /* =========================================================
+ 3. DIALOG (modal)
+ ========================================================= */
+ .dialog-overlay {
+ display: none;
+ position: fixed;
+ inset: 0;
+ background: rgba(0,0,0,0.55);
+ z-index: 200;
+ align-items: center;
+ justify-content: center;
+ backdrop-filter: blur(2px);
+ }
+ .dialog-overlay.open { display: flex; }
+ .dialog {
+ width: 480px;
+ max-width: 90vw;
+ background: hsl(var(--card));
+ border: 1px solid hsl(var(--border));
+ border-radius: var(--radius);
+ box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+ overflow: hidden;
+ animation: cmd-in 0.16s ease;
+ }
+ .dialog-header {
+ padding: 20px 22px 12px;
+ }
+ .dialog-title {
+ font-size: 17px;
+ font-weight: 600;
+ letter-spacing: -0.01em;
+ margin-bottom: 6px;
+ }
+ .dialog-description {
+ font-size: 13.5px;
+ color: hsl(var(--muted-foreground));
+ line-height: 1.55;
+ }
+ .dialog-body {
+ padding: 0 22px 8px;
+ }
+ .dialog-body .input-row {
+ display: flex;
+ flex-direction: column;
+ gap: 6px;
+ margin-top: 8px;
+ }
+ .dialog-body label {
+ font-size: 12.5px;
+ font-weight: 500;
+ color: hsl(var(--foreground));
+ }
+ .dialog-footer {
+ display: flex;
+ justify-content: flex-end;
+ gap: 8px;
+ padding: 16px 22px 20px;
+ background: hsl(var(--muted) / 0.3);
+ border-top: 1px solid hsl(var(--border));
+ }
+
+ /* =========================================================
+ 4. SHEET (slide-in panel)
+ ========================================================= */
+ .sheet-overlay {
+ display: none;
+ position: fixed;
+ inset: 0;
+ background: rgba(0,0,0,0.5);
+ z-index: 200;
+ backdrop-filter: blur(2px);
+ }
+ .sheet-overlay.open { display: block; }
+ .sheet {
+ position: fixed;
+ top: 0;
+ right: 0;
+ bottom: 0;
+ width: 460px;
+ max-width: 92vw;
+ background: hsl(var(--background));
+ border-left: 1px solid hsl(var(--border));
+ box-shadow: -8px 0 32px rgba(0,0,0,0.12);
+ z-index: 201;
+ transform: translateX(100%);
+ transition: transform 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+ display: flex;
+ flex-direction: column;
+ }
+ .sheet.open { transform: translateX(0); }
+ .sheet-header {
+ padding: 22px 24px 16px;
+ border-bottom: 1px solid hsl(var(--border));
+ }
+ .sheet-close {
+ position: absolute;
+ top: 16px;
+ right: 16px;
+ background: transparent;
+ border: none;
+ width: 28px; height: 28px;
+ border-radius: 6px;
+ color: hsl(var(--muted-foreground));
+ cursor: pointer;
+ display: grid;
+ place-items: center;
+ }
+ .sheet-close:hover {
+ background: hsl(var(--accent));
+ color: hsl(var(--foreground));
+ }
+ .sheet-close .icon { width: 16px; height: 16px; }
+ .sheet-title {
+ font-size: 16px;
+ font-weight: 600;
+ margin-bottom: 4px;
+ }
+ .sheet-description {
+ font-size: 13px;
+ color: hsl(var(--muted-foreground));
+ }
+ .sheet-body {
+ flex: 1;
+ overflow-y: auto;
+ padding: 20px 24px;
+ display: flex;
+ flex-direction: column;
+ gap: 18px;
+ }
+ .sheet-footer {
+ padding: 14px 24px;
+ border-top: 1px solid hsl(var(--border));
+ display: flex;
+ gap: 8px;
+ background: hsl(var(--muted) / 0.3);
+ }
+ .form-field {
+ display: flex;
+ flex-direction: column;
+ gap: 6px;
+ }
+ .form-field label {
+ font-size: 12.5px;
+ font-weight: 500;
+ }
+ .form-field-hint {
+ font-size: 11.5px;
+ color: hsl(var(--muted-foreground));
+ }
+ textarea.input {
+ height: auto;
+ padding: 10px 12px;
+ resize: vertical;
+ min-height: 84px;
+ line-height: 1.5;
+ }
+
+ /* =========================================================
+ 5. POPOVER
+ ========================================================= */
+ .popover-anchor { position: relative; display: inline-block; }
+ .popover {
+ position: absolute;
+ top: calc(100% + 6px);
+ left: 50%;
+ transform: translateX(-50%);
+ background: hsl(var(--card));
+ border: 1px solid hsl(var(--border));
+ border-radius: calc(var(--radius) - 2px);
+ box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+ padding: 14px;
+ width: 280px;
+ z-index: 50;
+ display: none;
+ }
+ .popover.open { display: block; }
+ .popover-title {
+ font-size: 13px;
+ font-weight: 600;
+ margin-bottom: 4px;
+ }
+ .popover-desc {
+ font-size: 12px;
+ color: hsl(var(--muted-foreground));
+ margin-bottom: 12px;
+ line-height: 1.5;
+ }
+ .popover-row {
+ display: flex;
+ justify-content: space-between;
+ font-size: 12.5px;
+ padding: 6px 0;
+ border-top: 1px solid hsl(var(--border));
+ }
+ .popover-row:first-of-type { border-top: none; padding-top: 0; }
+ .popover-row .label { color: hsl(var(--muted-foreground)); }
+ .popover-row .value { font-weight: 500; font-family: 'JetBrains Mono', monospace; }
+
+ /* =========================================================
+ 6. TOOLTIP
+ ========================================================= */
+ .tooltip-anchor {
+ position: relative;
+ display: inline-flex;
+ }
+ .tooltip {
+ position: absolute;
+ bottom: calc(100% + 6px);
+ left: 50%;
+ transform: translateX(-50%);
+ background: hsl(var(--foreground));
+ color: hsl(var(--background));
+ font-size: 11.5px;
+ font-weight: 500;
+ padding: 4px 8px;
+ border-radius: 4px;
+ pointer-events: none;
+ white-space: nowrap;
+ opacity: 0;
+ transition: opacity 0.12s;
+ z-index: 30;
+ }
+ .tooltip::after {
+ content: '';
+ position: absolute;
+ top: 100%;
+ left: 50%;
+ transform: translateX(-50%);
+ border: 4px solid transparent;
+ border-top-color: hsl(var(--foreground));
+ }
+ .tooltip-anchor:hover .tooltip,
+ .tooltip-anchor:focus-within .tooltip {
+ opacity: 1;
+ transition-delay: 0.5s;
+ }
+
+ /* =========================================================
+ 7. SWITCH
+ ========================================================= */
+ .switch {
+ position: relative;
+ display: inline-block;
+ width: 38px;
+ height: 22px;
+ cursor: pointer;
+ flex-shrink: 0;
+ }
+ .switch input {
+ opacity: 0;
+ width: 0;
+ height: 0;
+ position: absolute;
+ }
+ .switch-track {
+ position: absolute;
+ inset: 0;
+ background: hsl(var(--muted));
+ border: 1px solid hsl(var(--border));
+ border-radius: 999px;
+ transition: background 0.18s;
+ }
+ .switch-thumb {
+ position: absolute;
+ top: 2px;
+ left: 2px;
+ width: 16px; height: 16px;
+ background: hsl(var(--background));
+ border-radius: 50%;
+ transition: transform 0.18s;
+ box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+ }
+ .switch input:checked ~ .switch-track {
+ background: hsl(var(--primary));
+ border-color: hsl(var(--primary));
+ }
+ .switch input:checked ~ .switch-thumb {
+ transform: translateX(16px);
+ }
+ .switch:focus-within .switch-track {
+ box-shadow: 0 0 0 2px hsl(var(--ring) / 0.3);
+ }
+
+ .switch-row {
+ display: flex;
+ align-items: flex-start;
+ gap: 14px;
+ padding: 14px 0;
+ border-bottom: 1px solid hsl(var(--border));
+ }
+ .switch-row:last-child { border-bottom: none; }
+ .switch-row .switch { margin-top: 2px; }
+ .switch-row-body { flex: 1; }
+ .switch-row-title {
+ font-size: 13.5px;
+ font-weight: 500;
+ margin-bottom: 2px;
+ }
+ .switch-row-desc {
+ font-size: 12.5px;
+ color: hsl(var(--muted-foreground));
+ line-height: 1.45;
+ }
+
+ /* =========================================================
+ 8. SELECT (real listbox)
+ ========================================================= */
+ .select-trigger {
+ display: inline-flex;
+ align-items: center;
+ gap: 8px;
+ background: hsl(var(--background));
+ border: 1px solid hsl(var(--input));
+ border-radius: calc(var(--radius) - 2px);
+ padding: 0 10px 0 12px;
+ height: 34px;
+ color: hsl(var(--foreground));
+ font-size: 13px;
+ font-family: inherit;
+ cursor: pointer;
+ min-width: 200px;
+ justify-content: space-between;
+ transition: border-color 0.12s;
+ }
+ .select-trigger:hover { border-color: hsl(var(--foreground) / 0.3); }
+ .select-trigger.open { border-color: hsl(var(--ring)); box-shadow: 0 0 0 2px hsl(var(--ring) / 0.1); }
+ .select-trigger .chevron { width: 14px; height: 14px; color: hsl(var(--muted-foreground)); transition: transform 0.18s; }
+ .select-trigger.open .chevron { transform: rotate(180deg); }
+
+ .select-list {
+ position: absolute;
+ top: calc(100% + 4px);
+ left: 0;
+ right: 0;
+ min-width: 200px;
+ background: hsl(var(--card));
+ border: 1px solid hsl(var(--border));
+ border-radius: calc(var(--radius) - 2px);
+ box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+ padding: 4px;
+ z-index: 50;
+ display: none;
+ max-height: 240px;
+ overflow-y: auto;
+ }
+ .select-list.open { display: block; }
+ .select-item {
+ display: flex;
+ align-items: center;
+ gap: 8px;
+ padding: 7px 10px;
+ border-radius: calc(var(--radius) - 4px);
+ font-size: 13px;
+ cursor: pointer;
+ color: hsl(var(--foreground));
+ }
+ .select-item:hover { background: hsl(var(--accent)); }
+ .select-item .check {
+ width: 14px; height: 14px;
+ color: hsl(var(--foreground));
+ visibility: hidden;
+ }
+ .select-item.selected .check { visibility: visible; }
+
+ /* =========================================================
+ 9. TOAST
+ ========================================================= */
+ .toast-container {
+ position: fixed;
+ bottom: 20px;
+ right: 20px;
+ display: flex;
+ flex-direction: column;
+ gap: 8px;
+ z-index: 300;
+ pointer-events: none;
+ }
+ .toast {
+ background: hsl(var(--card));
+ border: 1px solid hsl(var(--border));
+ border-radius: calc(var(--radius) - 2px);
+ padding: 14px 16px;
+ width: 360px;
+ max-width: 90vw;
+ box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+ display: flex;
+ align-items: flex-start;
+ gap: 12px;
+ pointer-events: auto;
+ animation: toast-in 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+ }
+ @keyframes toast-in {
+ from { opacity: 0; transform: translateX(20px); }
+ to { opacity: 1; transform: translateX(0); }
+ }
+ .toast.removing {
+ animation: toast-out 0.18s ease forwards;
+ }
+ @keyframes toast-out {
+ to { opacity: 0; transform: translateX(20px); }
+ }
+ .toast-icon {
+ width: 22px; height: 22px;
+ border-radius: 50%;
+ display: grid;
+ place-items: center;
+ flex-shrink: 0;
+ margin-top: 1px;
+ }
+ .toast-icon.success { background: hsl(var(--status-ready) / 0.15); color: hsl(var(--status-ready)); }
+ .toast-icon.error { background: hsl(var(--status-failed) / 0.15); color: hsl(var(--status-failed)); }
+ .toast-icon.info { background: hsl(var(--status-running) / 0.15); color: hsl(var(--status-running)); }
+ .toast-icon .icon { width: 12px; height: 12px; }
+ .toast-body { flex: 1; min-width: 0; }
+ .toast-title { font-size: 13.5px; font-weight: 600; margin-bottom: 1px; }
+ .toast-desc { font-size: 12.5px; color: hsl(var(--muted-foreground)); line-height: 1.45; }
+ .toast-close {
+ background: transparent;
+ border: none;
+ color: hsl(var(--muted-foreground));
+ cursor: pointer;
+ padding: 2px;
+ border-radius: 4px;
+ }
+ .toast-close:hover { background: hsl(var(--accent)); color: hsl(var(--foreground)); }
+ .toast-close .icon { width: 12px; height: 12px; }
+
+ /* =========================================================
+ 10. HOVER CARD
+ ========================================================= */
+ .hover-trigger {
+ color: hsl(var(--foreground));
+ font-weight: 500;
+ cursor: pointer;
+ border-bottom: 1px dashed hsl(var(--border));
+ position: relative;
+ }
+ .hover-card {
+ position: absolute;
+ top: calc(100% + 8px);
+ left: 0;
+ width: 320px;
+ background: hsl(var(--card));
+ border: 1px solid hsl(var(--border));
+ border-radius: var(--radius);
+ box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+ padding: 14px;
+ z-index: 40;
+ opacity: 0;
+ pointer-events: none;
+ transform: translateY(-4px);
+ transition: opacity 0.18s, transform 0.18s;
+ }
+ .hover-trigger:hover .hover-card,
+ .hover-trigger:focus-within .hover-card {
+ opacity: 1;
+ pointer-events: auto;
+ transform: translateY(0);
+ transition-delay: 0.3s;
+ }
+ .hover-card-head {
+ display: flex;
+ align-items: center;
+ gap: 8px;
+ margin-bottom: 8px;
+ }
+ .hover-card-title {
+ font-size: 13.5px;
+ font-weight: 600;
+ flex: 1;
+ line-height: 1.3;
+ }
+ .hover-card-snippet {
+ font-size: 12px;
+ color: hsl(var(--muted-foreground));
+ line-height: 1.55;
+ margin-bottom: 10px;
+ }
+ .hover-card-meta {
+ display: flex;
+ gap: 12px;
+ padding-top: 10px;
+ border-top: 1px solid hsl(var(--border));
+ font-size: 11px;
+ color: hsl(var(--muted-foreground));
+ }
+ .hover-card-meta strong {
+ color: hsl(var(--foreground));
+ font-family: 'JetBrains Mono', monospace;
+ font-weight: 500;
+ }
+
+ /* =========================================================
+ 11. SKELETON
+ ========================================================= */
+ .skeleton {
+ background: linear-gradient(
+ 90deg,
+ hsl(var(--muted)) 25%,
+ hsl(var(--muted) / 0.5) 50%,
+ hsl(var(--muted)) 75%
+ );
+ background-size: 200% 100%;
+ border-radius: 4px;
+ animation: shimmer 1.5s infinite linear;
+ }
+ @keyframes shimmer {
+ 0% { background-position: 200% 0; }
+ 100% { background-position: -200% 0; }
+ }
+ .skeleton-row {
+ display: flex;
+ align-items: center;
+ gap: 16px;
+ padding: 14px 0;
+ border-bottom: 1px solid hsl(var(--border));
+ }
+ .skeleton-row:last-child { border-bottom: none; }
+ .skeleton-block {
+ flex: 1;
+ display: flex;
+ flex-direction: column;
+ gap: 6px;
+ }
+
+ /* =========================================================
+ 12. DATE PICKER (simple inline calendar)
+ ========================================================= */
+ .datepicker-trigger {
+ display: inline-flex;
+ align-items: center;
+ gap: 8px;
+ background: hsl(var(--background));
+ border: 1px solid hsl(var(--input));
+ border-radius: calc(var(--radius) - 2px);
+ padding: 0 12px;
+ height: 34px;
+ font-size: 13px;
+ color: hsl(var(--foreground));
+ cursor: pointer;
+ font-family: inherit;
+ min-width: 200px;
+ }
+ .datepicker-trigger:hover { border-color: hsl(var(--foreground) / 0.3); }
+ .datepicker-trigger .icon { width: 14px; height: 14px; color: hsl(var(--muted-foreground)); }
+ .datepicker-trigger .placeholder { color: hsl(var(--muted-foreground)); }
+ .calendar {
+ position: absolute;
+ top: calc(100% + 4px);
+ left: 0;
+ background: hsl(var(--card));
+ border: 1px solid hsl(var(--border));
+ border-radius: var(--radius);
+ box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+ padding: 14px;
+ width: 280px;
+ z-index: 50;
+ display: none;
+ }
+ .calendar.open { display: block; }
+ .calendar-head {
+ display: flex;
+ align-items: center;
+ margin-bottom: 10px;
+ }
+ .calendar-month {
+ font-size: 13px;
+ font-weight: 600;
+ flex: 1;
+ text-align: center;
+ }
+ .calendar-nav {
+ background: transparent;
+ border: 1px solid hsl(var(--border));
+ border-radius: 4px;
+ width: 26px; height: 26px;
+ cursor: pointer;
+ color: hsl(var(--foreground));
+ display: grid;
+ place-items: center;
+ }
+ .calendar-nav:hover { background: hsl(var(--accent)); }
+ .calendar-nav .icon { width: 14px; height: 14px; }
+ .calendar-grid {
+ display: grid;
+ grid-template-columns: repeat(7, 1fr);
+ gap: 2px;
+ }
+ .calendar-dow {
+ font-size: 11px;
+ text-align: center;
+ color: hsl(var(--muted-foreground));
+ padding: 4px 0;
+ font-weight: 500;
+ }
+ .calendar-day {
+ aspect-ratio: 1;
+ display: grid;
+ place-items: center;
+ font-size: 12.5px;
+ cursor: pointer;
+ border-radius: 4px;
+ background: transparent;
+ border: none;
+ color: hsl(var(--foreground));
+ font-family: inherit;
+ transition: background 0.1s;
+ }
+ .calendar-day:hover { background: hsl(var(--accent)); }
+ .calendar-day.muted { color: hsl(var(--muted-foreground)); opacity: 0.5; }
+ .calendar-day.today {
+ font-weight: 600;
+ background: hsl(var(--muted));
+ }
+ .calendar-day.selected {
+ background: hsl(var(--primary));
+ color: hsl(var(--primary-foreground));
+ font-weight: 500;
+ }
+ .calendar-foot {
+ margin-top: 12px;
+ padding-top: 10px;
+ border-top: 1px solid hsl(var(--border));
+ display: flex;
+ align-items: center;
+ gap: 8px;
+ }
+ .calendar-foot .input {
+ flex: 1;
+ height: 28px;
+ font-size: 12px;
+ }
+
+ /* =========================================================
+ SNIPPET DETAILS
+ ========================================================= */
+ .snippet {
+ margin-top: 16px;
+ padding: 14px 16px;
+ background: hsl(var(--muted) / 0.5);
+ border: 1px solid hsl(var(--border));
+ border-radius: calc(var(--radius) - 2px);
+ font-family: 'JetBrains Mono', monospace;
+ font-size: 12px;
+ color: hsl(var(--foreground));
+ overflow-x: auto;
+ white-space: pre;
+ line-height: 1.55;
+ }
+ .snippet-toggle {
+ display: inline-flex;
+ align-items: center;
+ gap: 6px;
+ background: transparent;
+ border: none;
+ color: hsl(var(--muted-foreground));
+ font-size: 12px;
+ font-family: inherit;
+ cursor: pointer;
+ margin-top: 12px;
+ padding: 4px 8px;
+ border-radius: 4px;
+ }
+ .snippet-toggle:hover { background: hsl(var(--accent)); color: hsl(var(--foreground)); }
+ .snippet-toggle .icon { width: 12px; height: 12px; transition: transform 0.18s; }
+ .snippet-toggle.open .icon { transform: rotate(90deg); }
+ .snippet-wrap { display: none; }
+ .snippet-wrap.open { display: block; }
+
+ /* =========================================================
+ RESPONSIVE
+ ========================================================= */
+ @media (max-width: 600px) {
+ .page { padding: 20px 14px 60px; }
+ .page-title { font-size: 22px; }
+ .demo-card { padding: 24px 16px; }
+ .cmd-trigger { min-width: 0; width: 100%; }
+ }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+ <header class="page-header">
+ <div>
+ <h1 class="page-title">Components</h1>
+ <p class="page-description">A working component library for ContentOS — controls used throughout the dashboard, editor, and publishing flows. Built with the same shadcn token system, no framework dependencies.</p>
+ </div>
+ <div class="header-actions">
+ <div class="toggle-group" role="radiogroup" aria-label="Theme">
+ <button class="toggle-group-item active" data-theme-set="light" title="Light">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.07" x2="19.07"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="22"/><line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/></svg>
+ </button>
+ <button class="toggle-group-item" data-theme-set="dark" title="Dark">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+ </button>
+ <button class="toggle-group-item" data-theme-set="system" title="System">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+ </button>
+ </div>
+ </div>
+ </header>
+
+ <!-- ====================================================== -->
+ <!-- 1. COMMAND PALETTE -->
+ <!-- ====================================================== -->
+ <section class="section">
+ <div class="section-head">
+ <h2 class="section-title">Command Palette</h2>
+ <span class="section-tag">⌘K</span>
+ <span class="section-meta">Press <kbd style="font-family:'JetBrains Mono',monospace;background:hsl(var(--muted));border:1px solid hsl(var(--border));padding:1px 5px;border-radius:3px;font-size:11px">⌘K</kbd> anywhere</span>
+ </div>
+ <p class="section-desc">Fuzzy search across articles, ideas, and quick actions. Replaces the dummy search box in the dashboard header.</p>
+ <div class="demo-card">
+ <button class="cmd-trigger" onclick="openCommand()">
+ <svg class="cmd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+ <span class="cmd-text">Search articles, ideas, or run a command…</span>
+ <kbd>⌘K</kbd>
+ </button>
+ </div>
+ </section>
+
+ <!-- ====================================================== -->
+ <!-- 2. DROPDOWN MENU -->
+ <!-- ====================================================== -->
+ <section class="section">
+ <div class="section-head">
+ <h2 class="section-title">Dropdown Menu</h2>
+ <span class="section-tag">DropdownMenu</span>
+ </div>
+ <p class="section-desc">Used by the split publish button and the per-row actions in the article table. Click to open.</p>
+ <div class="demo-card">
+
+ <!-- Split publish button with dropdown -->
+ <div class="split-btn">
+ <button class="btn btn-primary">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+ Publish to WordPress
+ </button>
+ <div class="menu-anchor">
+ <button class="btn btn-primary" onclick="toggleMenu(this)" aria-haspopup="menu">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+ </button>
+ <div class="menu right" data-menu>
+ <div class="menu-label">Publish options</div>
+ <button class="menu-item">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+ Publish now
+ <span class="menu-item-shortcut">⌘↵</span>
+ </button>
+ <button class="menu-item">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+ Schedule…
+ </button>
+ <button class="menu-item">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0-2 2v16a2 2 0 0 0-2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+ Save as WordPress draft
+ </button>
+ <div class="menu-separator"></div>
+ <button class="menu-item">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11-8 11-8 11-8 11-8 11-8-11-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+ Preview before publish
+ </button>
+ </div>
+ </div>
+ </div>
+
+ <!-- Row actions menu -->
+ <div class="menu-anchor">
+ <button class="btn btn-outline btn-icon-sm" onclick="toggleMenu(this)" aria-label="Article actions">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+ </button>
+ <div class="menu" data-menu>
+ <button class="menu-item">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0-2 2v14a2 2 0 0 0-2 2h14a2 2 0 0 0-2 2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+ Edit article
+ </button>
+ <button class="menu-item">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+ Re-run SEO check
+ </button>
+ <button class="menu-item">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1-2-2h9a2 2 0 0 1 2 2v1"/></svg>
+ Duplicate
+ </button>
+ <div class="menu-separator"></div>
+ <button class="menu-item destructive">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2 2L5 6"/></svg>
+ Delete
+ </button>
+ </div>
+ </div>
+
+ </div>
+ </section>
+
+ <!-- ====================================================== -->
+ <!-- 3. DIALOG -->
+ <!-- ====================================================== -->
+ <section class="section">
+ <div class="section-head">
+ <h2 class="section-title">Dialog</h2>
+ <span class="section-tag">Dialog</span>
+ </div>
+ <p class="section-desc">Modal confirmations and focused forms. Used for "Reject Idea", "Confirm Publish", and other actions that need user attention.</p>
+ <div class="demo-card">
+ <button class="btn btn-destructive" onclick="openDialog('reject')">Reject idea…</button>
+ <button class="btn btn-outline" onclick="openDialog('publish')">Confirm publish…</button>
+ </div>
+ </section>
+
+ <!-- ====================================================== -->
+ <!-- 4. SHEET -->
+ <!-- ====================================================== -->
+ <section class="section">
+ <div class="section-head">
+ <h2 class="section-title">Sheet</h2>
+ <span class="section-tag">Sheet</span>
+ </div>
+ <p class="section-desc">A side drawer for quick forms — heavier than a popover, lighter than a full page. Wired to "New Article Idea" from the dashboard.</p>
+ <div class="demo-card">
+ <button class="btn btn-primary" onclick="openSheet()">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+ New Article Idea
+ </button>
+ </div>
+ </section>
+
+ <!-- ====================================================== -->
+ <!-- 5. POPOVER -->
+ <!-- ====================================================== -->
+ <section class="section">
+ <div class="section-head">
+ <h2 class="section-title">Popover</h2>
+ <span class="section-tag">Popover</span>
+ </div>
+ <p class="section-desc">Lightweight click-to-open contextual info. Great for keyword density details, score breakdowns, and inline tips.</p>
+ <div class="demo-card">
+ <div class="menu-anchor">
+ <button class="btn btn-outline" onclick="togglePopover(this)">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+ Keyword: zero-based budget
+ </button>
+ <div class="popover" data-popover>
+ <div class="popover-title">zero-based budget</div>
+ <div class="popover-desc">Primary keyword. Density and placement look healthy for this article length.</div>
+ <div class="popover-row">
+ <span class="label">Occurrences</span>
+ <span class="value">8 ×</span>
+ </div>
+ <div class="popover-row">
+ <span class="label">Density</span>
+ <span class="value">0.37%</span>
+ </div>
+ <div class="popover-row">
+ <span class="label">In title</span>
+ <span class="value" style="color: hsl(var(--status-ready))">✓ Yes</span>
+ </div>
+ <div class="popover-row">
+ <span class="label">In first paragraph</span>
+ <span class="value" style="color: hsl(var(--status-ready))">✓ Yes</span>
+ </div>
+ </div>
+ </div>
+ </div>
+ </section>
+
+ <!-- ====================================================== -->
+ <!-- 6. TOOLTIP -->
+ <!-- ====================================================== -->
+ <section class="section">
+ <div class="section-head">
+ <h2 class="section-title">Tooltip</h2>
+ <span class="section-tag">Tooltip</span>
+ </div>
+ <p class="section-desc">Replaces native <code style="font-family:'JetBrains Mono',monospace;font-size:12px;background:hsl(var(--muted));padding:1px 5px;border-radius:3px">title</code> attributes on icon buttons throughout the app. Hover to see.</p>
+ <div class="demo-card">
+ <span class="tooltip-anchor">
+ <button class="btn btn-outline btn-icon-sm">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+ </button>
+ <span class="tooltip">Regenerate</span>
+ </span>
+ <span class="tooltip-anchor">
+ <button class="btn btn-outline btn-icon-sm">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 11-8 11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+ </button>
+ <span class="tooltip">Preview article</span>
+ </span>
+ <span class="tooltip-anchor">
+ <button class="btn btn-outline btn-icon-sm">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+ </button>
+ <span class="tooltip">Version history</span>
+ </span>
+ <span class="tooltip-anchor">
+ <button class="btn btn-outline btn-icon-sm">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2 2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+ </button>
+ <span class="tooltip">Export as Markdown</span>
+ </span>
+ </div>
+ </section>
+
+ <!-- ====================================================== -->
+ <!-- 7. SWITCH -->
+ <!-- ====================================================== -->
+ <section class="section">
+ <div class="section-head">
+ <h2 class="section-title">Switch</h2>
+ <span class="section-tag">Switch</span>
+ </div>
+ <p class="section-desc">Boolean toggles for workflow settings, auto-publishing, and notification preferences.</p>
+ <div class="demo-card col">
+ <div class="switch-row">
+ <label class="switch">
+ <input type="checkbox" checked />
+ <span class="switch-track"></span>
+ <span class="switch-thumb"></span>
+ </label>
+ <div class="switch-row-body">
+ <div class="switch-row-title">Auto-publish to WordPress</div>
+ <div class="switch-row-desc">Articles that pass all SEO and QA checks publish automatically without manual review.</div>
+ </div>
+ </div>
+ <div class="switch-row">
+ <label class="switch">
+ <input type="checkbox" checked />
+ <span class="switch-track"></span>
+ <span class="switch-thumb"></span>
+ </label>
+ <div class="switch-row-body">
+ <div class="switch-row-title">Email me on failed jobs</div>
+ <div class="switch-row-desc">Get notified when an article fails SEO normalization or QA review.</div>
+ </div>
+ </div>
+ <div class="switch-row">
+ <label class="switch">
+ <input type="checkbox" />
+ <span class="switch-track"></span>
+ <span class="switch-thumb"></span>
+ </label>
+ <div class="switch-row-body">
+ <div class="switch-row-title">Show advanced workflow details</div>
+ <div class="switch-row-desc">Reveal run IDs, raw step output, and JSON in the dashboard. Recommended off.</div>
+ </div>
+ </div>
+ </div>
+ </section>
+
+ <!-- ====================================================== -->
+ <!-- 8. SELECT -->
+ <!-- ====================================================== -->
+ <section class="section">
+ <div class="section-head">
+ <h2 class="section-title">Select</h2>
+ <span class="section-tag">Select</span>
+ </div>
+ <p class="section-desc">A real listbox with open/close and selected state. Replaces the placeholder selects in the dashboard's tab strip.</p>
+ <div class="demo-card">
+
+ <div class="menu-anchor">
+ <button class="select-trigger" onclick="toggleSelect(this)" data-select-trigger>
+ <span class="select-value">Last 7 days</span>
+ <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+ </button>
+ <div class="select-list" data-select-list>
+ <div class="select-item" onclick="selectItem(this, 'Last 24 hours')">
+ <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+ Last 24 hours
+ </div>
+ <div class="select-item selected" onclick="selectItem(this, 'Last 7 days')">
+ <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+ Last 7 days
+ </div>
+ <div class="select-item" onclick="selectItem(this, 'Last 30 days')">
+ <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+ Last 30 days
+ </div>
+ <div class="select-item" onclick="selectItem(this, 'Last 90 days')">
+ <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+ Last 90 days
+ </div>
+ <div class="select-item" onclick="selectItem(this, 'All time')">
+ <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentCost" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+ All time
+ </div>
+ </div>
+ </div>
+
+ <div class="menu-anchor">
+ <button class="select-trigger" onclick="toggleSelect(this)" data-select-trigger>
+ <span class="select-value">All stages</span>
+ <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+ </button>
+ <div class="select-list" data-select-list>
+ <div class="select-item selected" onclick="selectItem(this, 'All stages')">
+ <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+ All stages
+ </div>
+ <div class="select-item" onclick="selectItem(this, 'Research')">
+ <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+ Research
+ </div>
+ <div class="select-item" onclick="selectItem(this, 'Drafting')">
+ <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentCost" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+ Drafting
+ </div>
+ <div class="select-item" onclick="selectItem(this, 'SEO Normalization')">
+ <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentCost" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+ SEO Normalization
+ </div>
+ <div class="select-item" onclick="selectItem(this, 'QA Review')">
+ <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentCost" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+ QA Review
+ </div>
+ <div class="select-item" onclick="selectItem(this, 'Final Article')">
+ <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentCost" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+ Final Article
+ </div>
+ </div>
+ </div>
+ </div>
+ </section>
+
+ <!-- ====================================================== -->
+ <!-- 9. TOAST -->
+ <!-- ====================================================== -->
+ <section class="section">
+ <div class="section-head">
+ <h2 class="section-title">Toast</h2>
+ <span class="section-tag">Toast</span>
+ </div>
+ <p class="section-desc">Transient feedback for actions. Click any button to fire one.</p>
+ <div class="demo-card">
+ <button class="btn btn-outline" onclick="showToast('success', 'Article published', 'Why Your Budget Fails at $0 is now live on WordPress.')">Show success</button>
+ <button class="btn btn-outline" onclick="showToast('error', 'Job failed', 'SEO normalization failed: repeated keyword phrasing in section 3.')">Show error</button>
+ <button class="btn btn-outline" onclick="showToast('info', 'Re-running SEO check', 'This usually takes 20–30 seconds.')">Show info</button>
+ </div>
+ </section>
+
+ <!-- ====================================================== -->
+ <!-- 10. HOVER CARD -->
+ <!-- ====================================================== -->
+ <section class="section">
+ <div class="section-head">
+ <h2 class="section-title">Hover Card</h2>
+ <span class="section-tag">HoverCard</span>
+ </div>
+ <p class="section-desc">Article previews on hover from the dashboard table. Shows snippet, status badge, word count, scores. 300ms hover delay.</p>
+ <div class="demo-card align-start" style="padding: 60px 28px 110px">
+ <div style="font-size: 14px;">
+ Latest publish: <span class="hover-trigger" tabindex="0">Why Your Budget Fails at $0
+ <span class="hover-card">
+ <div class="hover-card-head">
+ <div class="hover-card-title">Why Your Budget Fails at $0</div>
+ <span class="badge badge-review">Review</span>
+ </div>
+ <div class="hover-card-snippet">If you've ever set up a zero-based budget only to abandon it three weeks later, you're not failing at money — you're failing at a system that was never built for real life…</div>
+ <div class="hover-card-meta">
+ <span><strong>2,140</strong> words</span>
+ <span>SEO <strong>84</strong></span>
+ <span>QA <strong>88</strong></span>
+ </div>
+ </span>
+ </span> in QA Review.
+ </div>
+ </div>
+ </section>
+
+ <!-- ====================================================== -->
+ <!-- 11. SKELETON -->
+ <!-- ====================================================== -->
+ <section class="section">
+ <div class="section-head">
+ <h2 class="section-title">Skeleton</h2>
+ <span class="section-tag">Skeleton</span>
+ </div>
+ <p class="section-desc">Loading placeholders for the article table while data fetches. Shimmer animation gives a sense of progress.</p>
+ <div class="demo-card col" style="padding: 0">
+ <div style="padding: 4px 20px 4px;">
+ <div class="skeleton-row">
+ <div class="skeleton-block">
+ <div class="skeleton" style="height: 14px; width: 60%;"></div>
+ <div class="skeleton" style="height: 11px; width: 35%;"></div>
+ </div>
+ <div class="skeleton" style="height: 12px; width: 90px;"></div>
+ <div class="skeleton" style="height: 22px; width: 80px; border-radius: 999px;"></div>
+ <div class="skeleton" style="height: 12px; width: 60px;"></div>
+ <div class="skeleton" style="height: 12px; width: 60px;"></div>
+ <div class="skeleton" style="height: 28px; width: 70px; border-radius: 4px;"></div>
+ </div>
+ <div class="skeleton-row">
+ <div class="skeleton-block">
+ <div class="skeleton" style="height: 14px; width: 75%;"></div>
+ <div class="skeleton" style="height: 11px; width: 30%;"></div>
+ </div>
+ <div class="skeleton" style="height: 12px; width: 90px;"></div>
+ <div class="skeleton" style="height: 22px; width: 80px; border-radius: 999px;"></div>
+ <div class="skeleton" style="height: 12px; width: 60px;"></div>
+ <div class="skeleton" style="height: 12px; width: 60px;"></div>
+ <div class="skeleton" style="height: 28px; width: 70px; border-radius: 4px;"></div>
+ </div>
+ <div class="skeleton-row">
+ <div class="skeleton-block">
+ <div class="skeleton" style="height: 14px; width: 50%;"></div>
+ <div class="skeleton" style="height: 11px; width: 28%;"></div>
+ </div>
+ <div class="skeleton" style="height: 12px; width: 90px;"></div>
+ <div class="skeleton" style="height: 22px; width: 80px; border-radius: 999px;"></div>
+ <div class="skeleton" style="height: 12px; width: 60px;"></div>
+ <div class="skeleton" style="height: 12px; width: 60px;"></div>
+ <div class="skeleton" style="height: 28px; width: 70px; border-radius: 4px;"></div>
+ </div>
+ </div>
+ </div>
+ </section>
+
+ <!-- ====================================================== -->
+ <!-- 12. DATE PICKER -->
+ <!-- ====================================================== -->
+ <section class="section">
+ <div class="section-head">
+ <h2 class="section-title">Date Picker</h2>
+ <span class="section-tag">DatePicker</span>
+ </div>
+ <p class="section-desc">For scheduling article publish times under Publishing → Scheduled. Click to open.</p>
+ <div class="demo-card">
+ <div class="menu-anchor">
+ <button class="datepicker-trigger" onclick="toggleCalendar(this)">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+ <span class="datepicker-value placeholder">Pick a publish date</span>
+ </button>
+ <div class="calendar" data-calendar></div>
+ </div>
+ </div>
+ </section>
+
+ <!-- ====================================================== -->
+ <!-- WRAP-UP -->
+ <!-- ====================================================== -->
+ <section class="section">
+ <div class="section-head">
+ <h2 class="section-title">Where these go</h2>
+ </div>
+ <p class="section-desc" style="max-width: 760px">
+ Each component above replaces or augments something already in the ContentOS pages. Command palette wires into the header search field. Dropdown menus hang off split publish buttons and table row triple-dots. Dialogs front the Reject Idea / Confirm Publish flows. Sheet powers New Article Idea. Popover reveals keyword density on click. Tooltips replace every <code style="font-family:'JetBrains Mono',monospace;font-size:12px;background:hsl(var(--muted));padding:1px 5px;border-radius:3px">title=""</code> attribute. Switches drive Workflow Settings. Select replaces the placeholder dropdown styling. Toast confirms publishes and surfaces failures. Hover Card previews articles from the dashboard table. Skeleton renders while fetching. Date Picker schedules publishing.
+ </p>
+ </section>
+
+</div>
+
+<!-- ============================================================ -->
+<!-- COMMAND PALETTE OVERLAY -->
+<!-- ============================================================ -->
+<div class="cmd-overlay" id="cmdOverlay" onclick="if(event.target===this)closeCommand()">
+ <div class="cmd-dialog" role="dialog" aria-label="Command palette">
+ <div class="cmd-input-wrap">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+ <input type="text" class="cmd-input" id="cmdInput" placeholder="Search articles, ideas, or run a command…" oninput="filterCommand()" />
+ </div>
+ <div class="cmd-list" id="cmdList">
+ <!-- Filled in by script -->
+ </div>
+ <div class="cmd-footer">
+ <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+ <span><kbd>↵</kbd> Select</span>
+ <span><kbd>Esc</kbd> Close</span>
+ </div>
+ </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- DIALOGS -->
+<!-- ============================================================ -->
+<div class="dialog-overlay" id="dialogOverlay" onclick="if(event.target===this)closeDialog()">
+ <div class="dialog" id="dialogReject" style="display:none" role="dialog" aria-labelledby="rejectTitle">
+ <div class="dialog-header">
+ <div class="dialog-title" id="rejectTitle">Reject this idea?</div>
+ <div class="dialog-description">"The Template Trap" will be moved to Rejected. You can restore it from the Rejected list within 30 days.</div>
+ </div>
+ <div class="dialog-body">
+ <div class="input-row">
+ <label for="rejectReason">Reason (optional)</label>
+ <textarea id="rejectReason" class="input" rows="3" placeholder="Note for future reference…"></textarea>
+ </div>
+ </div>
+ <div class="dialog-footer">
+ <button class="btn btn-outline" onclick="closeDialog()">Cancel</button>
+ <button class="btn btn-destructive" onclick="closeDialog(); showToast('success', 'Idea rejected', '"The Template Trap" was moved to Rejected.')">Reject idea</button>
+ </div>
+ </div>
+
+ <div class="dialog" id="dialogPublish" style="display:none" role="dialog" aria-labelledby="publishTitle">
+ <div class="dialog-header">
+ <div class="dialog-title" id="publishTitle">Publish to WordPress?</div>
+ <div class="dialog-description">"Why Your Budget Fails at $0" will be published immediately to your connected WordPress site as a public post.</div>
+ </div>
+ <div class="dialog-body" style="padding-bottom: 16px">
+ <div style="background: hsl(var(--muted)/0.5); border: 1px solid hsl(var(--border)); border-radius: 6px; padding: 12px 14px; margin-top: 8px;">
+ <div style="display: flex; gap: 16px; font-size: 12.5px; color: hsl(var(--muted-foreground));">
+ <span>SEO score <strong style="color: hsl(var(--foreground)); font-family: 'JetBrains Mono', monospace">84</strong></span>
+ <span>QA score <strong style="color: hsl(var(--foreground)); font-family: 'JetBrains Mono', monospace">88</strong></span>
+ <span>Words <strong style="color: hsl(var(--foreground)); font-family: 'JetBrains Mono', monospace">2,140</strong></span>
+ </div>
+ </div>
+ </div>
+ <div class="dialog-footer">
+ <button class="btn btn-outline" onclick="closeDialog()">Cancel</button>
+ <button class="btn btn-primary" onclick="closeDialog(); showToast('success', 'Article published', 'Why Your Budget Fails at $0 is now live on WordPress.')">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+ Publish now
+ </button>
+ </div>
+ </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SHEET -->
+<!-- ============================================================ -->
+<div class="sheet-overlay" id="sheetOverlay" onclick="closeSheet()"></div>
+<aside class="sheet" id="sheet" role="dialog" aria-labelledby="sheetTitle">
+ <button class="sheet-close" onclick="closeSheet()" aria-label="Close">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+ </button>
+ <div class="sheet-header">
+ <div class="sheet-title" id="sheetTitle">New article idea</div>
+ <div class="sheet-description">Capture the seed of an article. You can refine it later.</div>
+ </div>
+ <div class="sheet-body">
+ <div class="form-field">
+ <label for="ideaTitle">Working title</label>
+ <input type="text" class="input" id="ideaTitle" placeholder="e.g. The 3-Category Budget Reset" />
+ </div>
+ <div class="form-field">
+ <label for="ideaProblem">Reader problem</label>
+ <textarea class="input" id="ideaProblem" rows="3" placeholder="What pain or question does this solve?"></textarea>
+ <div class="form-field-hint">Concrete, single-sentence problem statements score better.</div>
+ </div>
+ <div class="form-field">
+ <label for="ideaCategory">Category</label>
+ <div class="menu-anchor" style="width: 100%">
+ <button class="select-trigger" style="width: 100%; min-width: 0" onclick="toggleSelect(this)" data-select-trigger>
+ <span class="select-value">Personal Finance</span>
+ <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+ </button>
+ <div class="select-list" data-select-list>
+ <div class="select-item selected" onclick="selectItem(this, 'Personal Finance')">
+ <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentCost" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+ Personal Finance
+ </div>
+ <div class="select-item" onclick="selectItem(this, 'Habits')">
+ <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentCost" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+ Habits
+ </div>
+ <div class="select-item" onclick="selectItem(this, 'Freelance')">
+ <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentCost" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+ Freelance
+ </div>
+ </div>
+ </div>
+ <div class="form-field">
+ <label>Auto-generate keywords</label>
+ <div class="switch-row" style="border: none; padding: 6px 0 0">
+ <label class="switch">
+ <input type="checkbox" checked />
+ <span class="switch-track"></span>
+ <span class="switch-thumb"></span>
+ </label>
+ <div class="switch-row-body">
+ <div class="switch-row-desc" style="font-size: 12.5px">Run keyword research immediately after the idea is approved.</div>
+ </div>
+ </div>
+ </div>
+ <div class="sheet-footer">
+ <button class="btn btn-outline" onclick="closeSheet()">Cancel</button>
+ <button class="btn btn-primary" style="margin-left: auto" onclick="closeSheet(); showToast('success', 'Idea created', 'The new article idea is in Pending Approval.')">Save idea</button>
+ </div>
+</aside>
+
+<!-- ============================================================ -->
+<!-- TOAST CONTAINER -->
+<!-- ============================================================ -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+ // ============================================================
+ // THEME
+ // ============================================================
+ const themeOptions = document.querySelectorAll('[data-theme-set]');
+ const root = document.documentElement;
+ function applyTheme(mode) {
+ let actual = mode;
+ if (mode === 'system') {
+ actual = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+ }
+ root.setAttribute('data-theme', actual);
+ themeOptions.forEach(b => b.classList.toggle('active', b.dataset.themeSet === mode));
+ try { localStorage.setItem('contentos-theme', mode); } catch(e) {}
+ }
+ themeOptions.forEach(b => b.addEventListener('click', () => applyTheme(b.dataset.themeSet)));
+ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+ const stored = (() => { try { return localStorage.getItem('contentos-theme'); } catch(e) { return null; }})();
+ if (stored === 'system') applyTheme('system');
+ });
+ (function init() {
+ let stored = null;
+ try { stored = localStorage.getItem('contentos-theme'); } catch(e) {}
+ applyTheme(stored || 'light');
+ })();
+
+ // ============================================================
+ // COMMAND PALETTE
+ // ============================================================
+ const commandItems = [
+ { group: 'Articles', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0-2 2v16a2 2 0 0 0-2 2h12a2 2 0 0 0-2 2V8z"/><polyline points="14 2 14 8 20 8"/></svg>', label: 'Why Your Budget Fails at $0' },
+ { group: 'Articles', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0-2 2v16a2 2 0 0 0-2 2h12a2 2 0 0 0-2 2V8z"/><polyline points="14 2 14 8 20 8"/></svg>', label: 'The 3-Category Budget Reset' },
+ { group: 'Articles', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0-2 2v16a2 2 0 0 0-2 2h12a2 2 0 0 0-2 2V8z"/><polyline points="14 2 14 8 20 8"/></svg>', label: 'Stop Tracking Every Cent' },
+ { group: 'Ideas', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V18h6v-1.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>', label: 'The Zero-Sum Shame' },
+ { group: 'Ideas', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V18h6v-1.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>', label: 'The Template Trap' },
+ { group: 'Actions', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>', label: 'Create new idea', shortcut: '⌘N' },
+ { group: 'Actions', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>, label: 'Generate article', shortcut: '⌘G' },
+ { group: 'Actions', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>, label: 'Review next item', shortcut: '⌘R' },
+ { group: 'Navigation', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>, label: 'Go to Dashboard' },
+ { group: 'Navigation', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>, label: 'Go to Reviews' },
+ { group: 'Navigation', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2 2v-4"/><polyline points="7 10 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>, label: 'Go to Publishing' },
+ ];
+
+ function renderCommand(filter = '') {
+ const list = document.getElementById('cmdList');
+ const lower = filter.toLowerCase().trim();
+ const matched = commandItems.filter(i => !lower || i.label.toLowerCase().includes(lower));
+ if (matched.length === 0) {
+ list.innerHTML = '<div class="cmd-empty">No results found.</div>';
+ return;
+ }
+ const grouped = {};
+ matched.forEach(i => { (grouped[i.group] ||= []).push(i); });
+ list.innerHTML = Object.entries(grouped).map(([group, items]) =>
+ `<div class="cmd-group-label">${group}</div>` +
+ items.map((i, idx) => `
+ <div class="cmd-item${idx === 0 && group === Object.keys(grouped)[0] ? ' selected' : ''}" onclick="selectCommandItem('${i.label.replace(/'/g, "&#39;")}')">
+ <span class="icon">${i.icon}</span>
+ <span>${i.label}</span>
+ ${i.shortcut ? `<span class="cmd-item-shortcut">${i.shortcut}</span>` : ''}
+ </div>
+ `).join('')
+ ).join('');
+ }
+
+ function openCommand() {
+ document.getElementById('cmdOverlay').classList.add('open');
+ document.getElementById('cmdInput').value = '';
+ renderCommand();
+ setTimeout(() => document.getElementById('cmdInput').focus(), 50);
+ }
+ function closeCommand() {
+ document.getElementById('cmdOverlay').classList.remove('open'); }
+ function filterCommand() {
+ renderCommand(document.getElementById('cmdInput').value);
+ }
+ function selectCommandItem(label) {
+ closeCommand();
+ showToast('info', 'Selected', label);
+ }
+ document.addEventListener('keydown', e => {
+ if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+ e.preventDefault();
+ openCommand();
+ }
+ if (e.key === 'Escape') {
+ closeCommand();
+ closeDialog();
+ closeSheet();
+ closeAllMenus();
+ }
+ });
+
+ // ============================================================
+ // DROPDOWN MENU & POPOVER & SELECT
+ // ============================================================
+ function closeAllMenus() {
+ document.querySelectorAll('[data-menu], [data-popover], [data-select-list]').forEach(m => m.classList.remove('open'));
+ document.querySelectorAll('[data-select-trigger]').forEach(t => t.classList.remove('open'));
+ }
+ function toggleMenu(btn) {
+ const m = btn.parentElement.querySelector('[data-menu]');
+ const isOpen = m.classList.contains('open');
+ closeAllMenus();
+ if (!isOpen) m.classList.add('open');
+ }
+ function togglePopover(btn) {
+ const p = btn.parentElement.querySelector('[data-popover]');
+ const isOpen = p.classList.contains('open');
+ closeAllMenus();
+ if (!isOpen) p.classList.add('open');
+ }
+ function toggleSelect(btn) {
+ const list = btn.parentElement.querySelector('[data-select-list]');
+ const isOpen = list.classList.contains('open');
+ closeAllMenus();
+ if (!isOpen) {
+ list.classList.add('open');
+ btn.classList.add('open');
+ }
+ }
+ function selectItem(item, value) {
+ const list = item.parentElement;
+ const trigger = list.parentElement.querySelector('[data-select-trigger]');
+ list.querySelectorAll('.select-item').forEach(i => i.classList.remove('selected'));
+ item.classList.add('selected');
+ trigger.querySelector('.select-value').textContent = value;
+ closeAllMenus();
+ }
+ document.addEventListener('click', e => {
+ if (!e.target.closest('.menu-anchor')) closeAllMenus();
+ });
+
+ // ============================================================
+ // DIALOG
+ // ============================================================
+ function openDialog(which) {
+ document.getElementById('dialogOverlay').classList.add('open');
+ document.querySelectorAll('.dialog').forEach(d => d.style.display = 'none');
+ document.getElementById('dialog' + which.charAt(0).toUpperCase() + which.slice(1)).style.display = 'block';
+ }
+ function closeDialog() {
+ document.getElementById('dialogOverlay').classList.remove('open');
+ }
+
+ // ============================================================
+ // SHEET
+ // ============================================================
+ function openSheet() {
+ document.getElementById('sheet').classList.add('open');
+ document.getElementById('sheetOverlay').classList.add('open');
+ }
+ function closeSheet() {
+ document.getElementById('sheet').classList.remove('open');
+ document.getElementById('sheetOverlay').classList.remove('open');
+ }
+
+ // ============================================================
+ // TOAST
+ // ============================================================
+ function showToast(variant, title, desc) {
+ const container = document.getElementById('toastContainer');
+ const t = document.createElement('div');
+ t.className = 'toast';
+ const icons = {
+ success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>',
+ error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+ info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+ };
+ t.innerHTML = `
+ <div class="toast-icon ${variant}"><span class="icon">${icons[variant]}</span></div>
+ <div class="toast-body">
+ <div class="toast-title">${title}</div>
+ <div class="toast-desc">${desc}</div>
+ </div>
+ <button class="toast-close" onclick="this.parentElement.classList.add('removing'); setTimeout(()=>this.parentElement.remove(), 200)">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+ </button>
+ `;
+ container.appendChild(t);
+ setTimeout(() => {
+ if (t.parentElement) {
+ t.classList.add('removing');
+ setTimeout(() => t.remove(), 200);
+ }
+ }, 4500);
+ }
+
+ // ============================================================
+ // CALENDAR
+ // ============================================================
+ let calMonth = new Date().getMonth();
+ let calYear = new Date().getFullYear();
+ let calSelected = null;
+ const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+ function renderCalendar(el) {
+ const today = new Date();
+ const firstDay = new Date(calYear, calMonth, 1);
+ const lastDay = new Date(calYear, calMonth + 1, 0);
+ const startDow = firstDay.getDay();
+ const daysInMonth = lastDay.getDate();
+ const prevMonthLast = new Date(calYear, calMonth, 0).getDate();
+
+ let html = `
+ <div class="calendar-head">
+ <button class="calendar-nav" onclick="changeMonth(-1, this)">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+ </button>
+ <div class="calendar-month">${monthNames[calMonth]} ${calYear}</div>
+ <button class="calendar-nav" onclick="changeMonth(1, this)">
+ <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+ </button>
+ </div>
+ <div class="calendar-grid">
+ ${['S','M','T','W','T','F','S'].map(d => `<div class="calendar-dow">${d}</div>`).join('')}
+ `;
+ // previous month spillover
+ for (let i = startDow - 1; i >= 0; i--) {
+ html += `<button class="calendar-day muted">${prevMonthLast - i}</button>`;
+ }
+ for (let d = 1; d <= daysInMonth; d++) {
+ const isToday = d === today.getDate() && calMonth === today.getMonth() && calYear === today.getFullYear();
+ const isSelected = calSelected && d === calSelected.d && calMonth === calSelected.m && calYear === calSelected.y;
+ const cls = ['calendar-day'];
+ if (isToday) cls.push('today');
+ if (isSelected) cls.push('selected');
+ html += `<button class="${cls.join(' ')}" onclick="pickDay(${d}, this)">${d}</button>`;
+ }
+ // next month spillover
+ const totalCells = startDow + daysInMonth;
+ const trailing = (7 - (totalCells % 7)) % 7;
+ for (let d = 1; d <= trailing; d++) {
+ html += `<button class="calendar-day muted">${d}</button>`;
+ }
+ html += `</div>
+ <div class="calendar-foot">
+ <input type="time" class="input" value="09:00" />
+ <button class="btn btn-primary btn-sm" onclick="confirmDate(this)">Schedule</button>
+ </div>`;
+ el.innerHTML = html;
+ }
+
+ function toggleCalendar(btn) {
+ const cal = btn.parentElement.querySelector('[data-calendar]');
+ const isOpen = cal.classList.contains('open');
+ closeAllMenus();
+ if (!isOpen) {
+ renderCalendar(cal);
+ cal.classList.add('open');
+ }
+ }
+ function changeMonth(delta, btn) {
+ calMonth += delta;
+ if (calMonth < 0) { calMonth = 11; calYear--; }
+ if (calMonth > 11) { calMonth = 0; calYear++; }
+ renderCalendar(btn.closest('[data-calendar]'));
+ }
+ function pickDay(d, btn) {
+ calSelected = { d, m: calMonth, y: calYear };
+ renderCalendar(btn.closest('[data-calendar]'));
+ }
+ function confirmDate(btn) {
+ if (!calSelected) {
+ showToast('error', 'Pick a date', 'Select a day from the calendar first.');
+ return;
+ }
+ const dateStr = `${monthNames[calSelected.m]} ${calSelected.d}, ${calSelected.y}`;
+ const trigger = btn.closest('.menu-anchor').querySelector('.datepicker-trigger');
+ const valueEl = trigger.querySelector('.datepicker-value');
+ valueEl.textContent = dateStr;
+ valueEl.classList.remove('placeholder');
+ closeAllMenus();
+ showToast('success', 'Publish scheduled', `Article will publish on ${dateStr}.`);
+ }
+</script>
+
+</body>
+</html>

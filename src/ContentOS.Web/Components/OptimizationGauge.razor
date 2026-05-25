@@ -1,0 +1,37 @@
+<div class="opt-gauge size-@NormalizedSize @(Bare ? "variant-bare" : null) @(AnimateOnLoad ? "animate-on-load" : null)" style="--gauge-needle-angle:@NeedleAngleDeg">
+    <svg class="opt-gauge-svg" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Score @ClampedScore out of 100">
+        <path d="M 22 110 A 78 78 0 0 1 178 110" fill="none" stroke="var(--gauge-track-color)" stroke-width="28" />
+        <path d="M 22 110 A 78 78 0 0 1 178 110" fill="none" stroke="var(--zone-1)" stroke-width="26" stroke-dasharray="48 245" stroke-dashoffset="0" />
+        <path d="M 22 110 A 78 78 0 0 1 178 110" fill="none" stroke="var(--zone-2)" stroke-width="26" stroke-dasharray="48 245" stroke-dashoffset="-49" />
+        <path d="M 22 110 A 78 78 0 0 1 178 110" fill="none" stroke="var(--zone-3)" stroke-width="26" stroke-dasharray="48 245" stroke-dashoffset="-98" />
+        <path d="M 22 110 A 78 78 0 0 1 178 110" fill="none" stroke="var(--zone-4)" stroke-width="26" stroke-dasharray="48 245" stroke-dashoffset="-147" />
+        <path d="M 22 110 A 78 78 0 0 1 178 110" fill="none" stroke="var(--zone-5)" stroke-width="26" stroke-dasharray="48 245" stroke-dashoffset="-196" />
+        <g class="opt-gauge-needle-group">
+            <polygon points="100,32 96,110 104,110" fill="var(--gauge-needle-color)" />
+        </g>
+        <circle cx="100" cy="110" r="9" fill="var(--gauge-needle-color)" />
+        <circle cx="100" cy="110" r="3.5" fill="hsl(var(--background))" />
+    </svg>
+    <div class="opt-gauge-score">@ClampedScore<span class="opt-gauge-total">/100</span></div>
+    @if (!string.IsNullOrWhiteSpace(Label))
+    {
+        <div class="opt-gauge-label">@Label</div>
+    }
+</div>
+
+@code {
+    [Parameter] public int Score { get; set; }
+    [Parameter] public string Size { get; set; } = "md";
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public bool Bare { get; set; }
+    [Parameter] public bool AnimateOnLoad { get; set; }
+
+    private int ClampedScore => Math.Clamp(Score, 0, 100);
+    private string NormalizedSize => Size?.ToLowerInvariant() switch
+    {
+        "sm" or "small" => "sm",
+        "lg" or "large" => "lg",
+        _ => "md"
+    };
+    private string NeedleAngleDeg => $"{((ClampedScore / 100d) * 180d - 90d):0.###}deg";
+}

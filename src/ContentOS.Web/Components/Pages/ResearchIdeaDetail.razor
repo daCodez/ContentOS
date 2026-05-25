@@ -1,0 +1,279 @@
+@page "/research-inbox/{IdeaId:guid}"
+
+@using System.Text.Json
+@using MediatR
+@using ContentOS.Application.Commands
+@using ContentOS.Application.Queries
+@using ContentOS.Domain.Entities
+@inject IMediator Mediator
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+
+<PageTitle>Research Detail | ContentOS</PageTitle>
+
+<div class="mission-control-container">
+    <div class="header-section">
+        <div class="title-group">
+            <h1>@(Idea?.Title ?? "Research Detail")</h1>
+            <p class="subtitle">Full research brief, scoring context, and approval controls for this topic.</p>
+        </div>
+        <div class="actions-group">
+            <a href="/research-inbox" class="btn-secondary">Back to Inbox</a>
+            @if (Idea != null && Idea.Status != "Approved")
+            {
+                <button class="btn-primary" @onclick="ApproveIdea" disabled="@IsApproving">@(IsApproving ? "Approving…" : "Approve Idea")</button>
+                <button class="btn-secondary" @onclick="ArchiveIdea">Archive</button>
+                <button class="btn-danger" @onclick="DeleteIdea">Delete</button>
+            }
+            else if (Idea != null)
+            {
+                @if (WorkflowJobId.HasValue)
+                {
+                    <a class="btn-primary" href="@($"/workflow-job/{WorkflowJobId.Value}")">Open Workflow</a>
+                }
+                <button class="btn-secondary" @onclick="ArchiveIdea">Archive</button>
+            }
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="error-banner">@ErrorMessage</div>
+    }
+
+    @if (Idea == null)
+    {
+        <div class="empty-card">Research idea not found.</div>
+    }
+    else
+    {
+        <div class="summary-grid">
+            <div class="summary-card hero-card">
+                <div class="eyebrow">Primary Keyword</div>
+                <h2>@Idea.PrimaryKeyword</h2>
+                <p>@Idea.Summary</p>
+                <div class="tag-row">
+                    <span class="badge-blue">@Idea.ContentType</span>
+                    <span class="badge-neutral">@Idea.FunnelStage</span>
+                    <span class="status-badge @(Idea.Status == "Approved" ? "status-approved" : "status-pending")">@Idea.Status</span>
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <div class="eyebrow">Audience</div>
+                <div class="detail-pair">
+                    <span class="label">Pain point</span>
+                    <p>@Idea.AudiencePainPoint</p>
+                </div>
+                <div class="detail-pair">
+                    <span class="label">Goal</span>
+                    <p>@Idea.AudienceGoal</p>
+                </div>
+                <div class="detail-pair">
+                    <span class="label">Intent</span>
+                    <p>@Idea.SearchIntent</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-grid">
+            <div class="panel-card">
+                <h3>Strategic angle</h3>
+                <div class="detail-pair">
+                    <span class="label">Recommended angle</span>
+                    <p>@Idea.RecommendedAngle</p>
+                </div>
+                <div class="detail-pair">
+                    <span class="label">Why now</span>
+                    <p>@Idea.WhyNow</p>
+                </div>
+                <div class="detail-pair">
+                    <span class="label">Slug suggestion</span>
+                    <code>@Idea.SlugSuggestion</code>
+                </div>
+            </div>
+
+            <div class="panel-card">
+                <h3>Scoring</h3>
+                <div class="score-list">
+                    <div class="score-item"><span>Overall</span><strong>@Idea.OverallScore</strong></div>
+                    <div class="score-item"><span>SEO</span><strong>@Idea.SeoOpportunityScore</strong></div>
+                    <div class="score-item"><span>Monetization</span><strong>@Idea.MonetizationFitScore</strong></div>
+                    <div class="score-item"><span>Trend</span><strong>@Idea.TrendScore</strong></div>
+                    <div class="score-item"><span>Competition</span><strong>@Idea.CompetitionScore</strong></div>
+                </div>
+                <div class="tag-row top-gap">
+                    @if (Idea.Evergreen)
+                    {
+                        <span class="badge-green">Evergreen</span>
+                    }
+                    @if (Idea.Seasonal)
+                    {
+                        <span class="badge-amber">Seasonal</span>
+                    }
+                </div>
+            </div>
+
+            <div class="panel-card full-width">
+                <h3>Supporting research</h3>
+                <div class="detail-pair">
+                    <span class="label">Secondary keywords</span>
+                    <div class="tag-row">
+                        @foreach (var keyword in SecondaryKeywords)
+                        {
+                            <span class="badge-neutral">@keyword</span>
+                        }
+                    </div>
+                </div>
+                <div class="detail-pair top-gap">
+                    <span class="label">Research sources</span>
+                    @if (ResearchSources.Any())
+                    {
+                        <ul class="source-list">
+                            @foreach (var source in ResearchSources)
+                            {
+                                <li>@source</li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No source summary captured yet.</p>
+                    }
+                </div>
+                <div class="detail-pair top-gap">
+                    <span class="label">Evidence trail</span>
+                    @if (EvidenceRows.Any())
+                    {
+                        <div class="evidence-list">
+                            @foreach (var evidence in EvidenceRows)
+                            {
+                                <div class="evidence-item">
+                                    <div class="evidence-meta">
+                                        <span class="badge-blue">@evidence.SourceType</span>
+                                        @if (!string.IsNullOrWhiteSpace(evidence.SourceUrl))
+                                        {
+                                            <a class="btn-link" href="@evidence.SourceUrl" target="_blank" rel="noreferrer">Open source</a>
+                                        }
+                                    </div>
+                                    <strong>@evidence.SourceTitle</strong>
+                                    @if (!string.IsNullOrWhiteSpace(evidence.Notes))
+                                    {
+                                        <p>@evidence.Notes</p>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No detailed evidence rows captured yet.</p>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+
+@code {
+    [Parameter] public Guid IdeaId { get; set; }
+
+    private ContentIdea? Idea;
+    private Guid? WorkflowJobId;
+    private List<string> SecondaryKeywords = new();
+    private List<string> ResearchSources = new();
+    private List<ContentResearchSource> EvidenceRows = new();
+    private string? ErrorMessage;
+    private bool IsApproving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadIdea();
+    }
+
+    private async Task LoadIdea()
+    {
+        Idea = await Mediator.Send(new GetContentIdeaByIdQuery(IdeaId));
+        SecondaryKeywords = ParseJsonArray(Idea?.SecondaryKeywordsJson);
+        ResearchSources = ParseJsonArray(Idea?.SourceSummaryJson);
+        EvidenceRows = (await Mediator.Send(new GetContentResearchSourcesByIdeaIdQuery(IdeaId))).ToList();
+        WorkflowJobId = Idea is null
+            ? null
+            : (await Mediator.Send(new GetWorkflowJobByContentIdeaIdQuery(Idea.Id)))?.Id;
+    }
+
+    private async Task ApproveIdea()
+    {
+        if (Idea is null) return;
+
+        ErrorMessage = null;
+        IsApproving = true;
+
+        try
+        {
+            var workflowJobId = await Mediator.Send(new ApproveContentIdeaCommand(Idea.Id, "Eric"));
+            WorkflowJobId = workflowJobId;
+            Navigation.NavigateTo($"/workflow-job/{workflowJobId}", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Approval failed: {ex.Message}";
+        }
+        finally
+        {
+            IsApproving = false;
+        }
+    }
+
+    private async Task ArchiveIdea()
+    {
+        if (Idea is null)
+        {
+            return;
+        }
+
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "Archive this idea? It will be removed from the inbox.");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        await Mediator.Send(new ArchiveContentIdeaCommand(Idea.Id));
+        Idea = null;
+    }
+
+    private async Task DeleteIdea()
+    {
+        if (Idea is null)
+        {
+            return;
+        }
+
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "Delete this idea permanently? This cannot be undone.");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        await Mediator.Send(new DeleteContentIdeaCommand(Idea.Id));
+        Idea = null;
+    }
+
+    private static List<string> ParseJsonArray(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return new List<string>();
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+        }
+        catch
+        {
+            return new List<string>();
+        }
+    }
+}

@@ -1,0 +1,28 @@
+﻿<Project>
+  <ItemGroup>
+    <StaticWebAssetEndpoint Include="_content/SlateKit/SlateKit.6rnflryafh.js">
+      <AssetFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\SlateKit.js'))</AssetFile>
+      <Selectors><![CDATA[[]]]></Selectors>
+      <EndpointProperties><![CDATA[[{"Name":"fingerprint","Value":"6rnflryafh"},{"Name":"integrity","Value":"sha256-/ri5uvyISwn0oWLeJQuzVEgsPEZ1VBnIjMxwzGrXfJU="},{"Name":"label","Value":"_content/SlateKit/SlateKit.js"}]]]></EndpointProperties>
+      <ResponseHeaders><![CDATA[[{"Name":"Cache-Control","Value":"max-age=31536000, immutable"},{"Name":"Content-Length","Value":"14600"},{"Name":"Content-Type","Value":"text/javascript"},{"Name":"ETag","Value":"\u0022/ri5uvyISwn0oWLeJQuzVEgsPEZ1VBnIjMxwzGrXfJU=\u0022"},{"Name":"Last-Modified","Value":"Tue, 28 Apr 2026 03:09:45 GMT"},{"Name":"Vary","Value":"Accept-Encoding"}]]]></ResponseHeaders>
+    </StaticWebAssetEndpoint>
+    <StaticWebAssetEndpoint Include="_content/SlateKit/SlateKit.css">
+      <AssetFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\SlateKit.css'))</AssetFile>
+      <Selectors><![CDATA[[]]]></Selectors>
+      <EndpointProperties><![CDATA[[{"Name":"integrity","Value":"sha256-iplEHk1vWNaKCICQdoXAUVDNff3qzTruT0Ndr7mrFgc="}]]]></EndpointProperties>
+      <ResponseHeaders><![CDATA[[{"Name":"Cache-Control","Value":"no-cache"},{"Name":"Content-Length","Value":"51357"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u0022iplEHk1vWNaKCICQdoXAUVDNff3qzTruT0Ndr7mrFgc=\u0022"},{"Name":"Last-Modified","Value":"Tue, 28 Apr 2026 03:47:20 GMT"},{"Name":"Vary","Value":"Accept-Encoding"}]]]></ResponseHeaders>
+    </StaticWebAssetEndpoint>
+    <StaticWebAssetEndpoint Include="_content/SlateKit/SlateKit.js">
+      <AssetFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\SlateKit.js'))</AssetFile>
+      <Selectors><![CDATA[[]]]></Selectors>
+      <EndpointProperties><![CDATA[[{"Name":"integrity","Value":"sha256-/ri5uvyISwn0oWLeJQuzVEgsPEZ1VBnIjMxwzGrXfJU="}]]]></EndpointProperties>
+      <ResponseHeaders><![CDATA[[{"Name":"Cache-Control","Value":"no-cache"},{"Name":"Content-Length","Value":"14600"},{"Name":"Content-Type","Value":"text/javascript"},{"Name":"ETag","Value":"\u0022/ri5uvyISwn0oWLeJQuzVEgsPEZ1VBnIjMxwzGrXfJU=\u0022"},{"Name":"Last-Modified","Value":"Tue, 28 Apr 2026 03:09:45 GMT"},{"Name":"Vary","Value":"Accept-Encoding"}]]]></ResponseHeaders>
+    </StaticWebAssetEndpoint>
+    <StaticWebAssetEndpoint Include="_content/SlateKit/SlateKit.ydcbbiyvkj.css">
+      <AssetFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\SlateKit.css'))</AssetFile>
+      <Selectors><![CDATA[[]]]></Selectors>
+      <EndpointProperties><![CDATA[[{"Name":"fingerprint","Value":"ydcbbiyvkj"},{"Name":"integrity","Value":"sha256-iplEHk1vWNaKCICQdoXAUVDNff3qzTruT0Ndr7mrFgc="},{"Name":"label","Value":"_content/SlateKit/SlateKit.css"}]]]></EndpointProperties>
+      <ResponseHeaders><![CDATA[[{"Name":"Cache-Control","Value":"max-age=31536000, immutable"},{"Name":"Content-Length","Value":"51357"},{"Name":"Content-Type","Value":"text/css"},{"Name":"ETag","Value":"\u0022iplEHk1vWNaKCICQdoXAUVDNff3qzTruT0Ndr7mrFgc=\u0022"},{"Name":"Last-Modified","Value":"Tue, 28 Apr 2026 03:47:20 GMT"},{"Name":"Vary","Value":"Accept-Encoding"}]]]></ResponseHeaders>
+    </StaticWebAssetEndpoint>
+  </ItemGroup>
+</Project>

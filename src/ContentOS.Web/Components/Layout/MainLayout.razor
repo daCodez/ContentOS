@@ -1,0 +1,42 @@
+@inherits LayoutComponentBase
+
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="sidebar-brand">CONTENTOS</div>
+        <NavMenu />
+    </aside>
+
+    <main class="content">
+        <header class="topbar">
+            <div class="topbar-left">
+                <div class="topbar-search">
+                    <span class="topbar-search-icon">⌕</span>
+                    <input type="text" placeholder="enter keyword here..." />
+                </div>
+            </div>
+
+            <div class="topbar-right">
+                <div class="theme-control">
+                    <span class="theme-control-label">Theme</span>
+                    <select class="theme-select" aria-label="Theme" onchange="window.contentOsTheme.set(this.value)">
+                        <option value="system">System</option>
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                    </select>
+                </div>
+                <a class="topbar-link" href="/">Start Tour</a>
+                <button class="topbar-icon" type="button" aria-label="alerts">🔈</button>
+                <button class="topbar-icon has-badge" type="button" aria-label="messages">✉<span class="mini-badge">2</span></button>
+                <button class="topbar-icon has-badge" type="button" aria-label="notifications">🔔<span class="mini-badge alert">8</span></button>
+                <div class="user-menu">
+                    <span class="user-avatar">E</span>
+                    <span class="user-display">Eric</span>
+                </div>
+            </div>
+        </header>
+
+        <section class="main-content">
+            @Body
+        </section>
+    </main>
+</div>

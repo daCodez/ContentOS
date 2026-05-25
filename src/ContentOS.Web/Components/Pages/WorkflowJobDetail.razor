@@ -1,0 +1,1912 @@
+@page "/workflow-job/{JobId:guid}"
+
+@using System.Text.Json
+@using System.Net.Http.Json
+@using System.Threading;
+@using MediatR
+@using ContentOS.Application.Commands.Artifacts
+@using ContentOS.Application.Commands
+@using ContentOS.Application.Queries
+@using ContentOS.Domain.Entities
+@using TaskStatusEnum = ContentOS.Domain.Enums.TaskStatus
+@inject IMediator Mediator
+@inject IJSRuntime JS
+@inject HttpClient Http
+@implements IAsyncDisposable
+
+<PageTitle>Workflow Detail | ContentOS</PageTitle>
+
+<div class="mission-control-container">
+    <div class="crumb-row">
+        <span>Home</span>
+        <span class="crumb-sep">›</span>
+        <a href="/research-inbox">Research Inbox</a>
+        <span class="crumb-sep">›</span>
+        <span>Workflow</span>
+    </div>
+
+    <div class="page-header-row">
+        <div>
+            <h1 class="page-title">WORKFLOW DETAIL</h1>
+            <p class="page-subtitle">Track the production pipeline for this approved topic.</p>
+        </div>
+        <div class="actions-group">
+            @if (FinalArticlePreview is not null)
+            {
+                <a href="@($"/workflow-job/{JobId}/preview")" class="btn-primary">Read Mode</a>
+            }
+            <a href="/research-inbox" class="btn-secondary">Back to Inbox</a>
+        </div>
+    </div>
+
+    @if (Job is null)
+    {
+        <div class="empty-card">Workflow not found.</div>
+    }
+    else
+    {
+        <div class="workflow-tab-bar" role="tablist" aria-label="Workflow detail sections">
+            <button class="workflow-tab @(ActiveTab == WorkflowTab.Overview ? "workflow-tab-active" : string.Empty)" @onclick='() => SetActiveTab(WorkflowTab.Overview)'>Overview</button>
+            <button class="workflow-tab @(ActiveTab == WorkflowTab.Tasks ? "workflow-tab-active" : string.Empty)" @onclick='() => SetActiveTab(WorkflowTab.Tasks)'>Tasks</button>
+            <button class="workflow-tab @(ActiveTab == WorkflowTab.Artifacts ? "workflow-tab-active" : string.Empty)" @onclick='() => SetActiveTab(WorkflowTab.Artifacts)'>Artifacts</button>
+            <button class="workflow-tab @(ActiveTab == WorkflowTab.FinalArticle ? "workflow-tab-active" : string.Empty)" @onclick='() => SetActiveTab(WorkflowTab.FinalArticle)'>Editorial Mode</button>
+        </div>
+
+        @if (ActiveTab == WorkflowTab.Overview)
+        {
+            <div class="summary-grid">
+                <div class="summary-card hero-card">
+                    <div class="eyebrow">Workflow Job</div>
+                    <h2>@Job.Id</h2>
+                    <p>@(Idea?.Title ?? "Approved topic workflow")</p>
+                    <div class="tag-row">
+                        <span class="status-badge @(MapJobStatusClass(Job.Status))">@Job.Status</span>
+                        <span class="badge-neutral">@Job.CurrentStage</span>
+                        @if (!string.IsNullOrWhiteSpace(Idea?.ContentType))
+                        {
+                            <span class="badge-blue">@FormatLabel(Idea.ContentType)</span>
+                        }
+                    </div>
+                </div>
+
+                <div class="summary-card">
+                    <div class="eyebrow">Current Snapshot</div>
+                    <div class="detail-pair">
+                        <span class="label">Topic</span>
+                        <p>@(Idea?.Title ?? "Unknown")</p>
+                    </div>
+                    <div class="detail-pair">
+                        <span class="label">Current stage</span>
+                        <p>@Job.CurrentStage</p>
+                    </div>
+                    <div class="detail-pair">
+                        <span class="label">Definition version</span>
+                        <p>@(WorkflowVersionInfo is null ? "Unknown" : $"{WorkflowVersionInfo.WorkflowDefinitionName} v{WorkflowVersionInfo.WorkflowDefinitionVersion}")</p>
+                    </div>
+                    <div class="detail-pair">
+                        <span class="label">Last updated</span>
+                        <p>@Job.LastUpdatedUtc.ToString("yyyy-MM-dd HH:mm") UTC</p>
+                    </div>
+                </div>
+
+                <div class="summary-card focus-card">
+                    <div class="eyebrow">Focus Now</div>
+                    @if (CurrentTask is null)
+                    {
+                        <p class="focus-empty">No active step right now.</p>
+                    }
+                    else
+                    {
+                        <div class="focus-task-name">@CurrentTask.Name</div>
+                        <div class="workflow-task-meta">@CurrentTask.StageName • @CurrentTask.AssignedAgent</div>
+                        <div class="tag-row compact-tags">
+                            <span class="status-badge @(MapTaskStatusClass(CurrentTask.Status))">@CurrentTask.Status</span>
+                            <span class="badge-neutral">Step @CurrentTask.DisplayOrder</span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(CurrentTask.Instructions))
+                        {
+                            <p class="focus-task-copy">@CurrentTask.Instructions</p>
+                        }
+                    }
+                </div>
+            </div>
+
+            <section class="dashboard-card compact-card workflow-progress-card">
+                <div class="widget-title">Progress Snapshot</div>
+                <div class="mini-metrics workflow-progress-metrics">
+                    <div class="mini-metric">
+                        <span class="mini-label">Tasks</span>
+                        <strong>@TaskCount</strong>
+                    </div>
+                    <div class="mini-metric active-metric">
+                        <span class="mini-label">Ready Now</span>
+                        <strong>@ReadyCount</strong>
+                    </div>
+                    <div class="mini-metric">
+                        <span class="mini-label">In Progress</span>
+                        <strong>@InProgressCount</strong>
+                    </div>
+                    <div class="mini-metric">
+                        <span class="mini-label">Completed</span>
+                        <strong>@CompletedCount</strong>
+                    </div>
+                    <div class="mini-metric">
+                        <span class="mini-label">Pending</span>
+                        <strong>@PendingCount</strong>
+                    </div>
+                </div>
+            </section>
+
+            @if (FinalArticlePreview is not null)
+            {
+                var preview = ParseArtifactJson(FinalArticlePreview.ContentJson);
+                <section class="dashboard-card compact-card final-article-card">
+                    <div class="widget-title">Final Article</div>
+                    <div class="final-article-meta">
+                        <div class="mini-metric">
+                            <span class="mini-label">Words</span>
+                            <strong>@GetJsonString(preview, "estimatedWordCount")</strong>
+                        </div>
+                        <div class="mini-metric">
+                            <span class="mini-label">Read time</span>
+                            <strong>@GetJsonString(preview, "estimatedReadTimeMinutes") min</strong>
+                        </div>
+                        <div class="mini-metric">
+                            <span class="mini-label">Title</span>
+                            <strong>@GetJsonString(preview, "title")</strong>
+                        </div>
+                        <div class="mini-metric">
+                            <span class="mini-label">Keyword strength</span>
+                            <strong class="keyword-strength @MapKeywordStrengthClass(GetJsonString(preview, "keywordStrengthLabel"))">
+                                @GetJsonString(preview, "keywordStrengthLabel") (@GetJsonString(preview, "keywordStrengthScore"))
+                            </strong>
+                        </div>
+                        <div class="mini-metric">
+                            <span class="mini-label">Preview</span>
+                            <strong><a class="btn-link" href="@($"/workflow-job/{JobId}/preview")">Open Read Mode</a></strong>
+                        </div>
+                    </div>
+                    <p class="final-article-summary">@GetJsonString(preview, "summary")</p>
+                </section>
+            }
+        }
+        else if (ActiveTab == WorkflowTab.Tasks)
+        {
+            <section class="dashboard-card compact-card">
+                <div class="widget-title">Pipeline Tasks</div>
+
+                @if (Tasks is null)
+                {
+                    <p class="text-center">Loading workflow tasks...</p>
+                }
+                else if (!Tasks.Any())
+                {
+                    <p class="text-center">No tasks found for this workflow.</p>
+                }
+                else
+                {
+                    <div class="workflow-task-list">
+                        @foreach (var task in OrderedTasks)
+                        {
+                                <div class="workflow-task-card @(task.Status == TaskStatusEnum.Ready ? "workflow-task-ready" : string.Empty) @(task.Status == TaskStatusEnum.Failed ? "workflow-task-failed" : string.Empty)">
+                                <div class="workflow-task-top">
+                                    <div class="workflow-task-info">
+                                        <div class="workflow-task-order">Step @task.DisplayOrder</div>
+                                        <div class="workflow-task-name">@task.Name</div>
+                                        <div class="workflow-task-meta">@task.StageName • @task.AssignedAgent</div>
+                                    </div>
+                                    <div class="workflow-task-status-group">
+                                        <span class="status-badge @(MapTaskStatusClass(task.Status))">@task.Status</span>
+                                        @if (task.Status == TaskStatusEnum.Failed || task.Status == TaskStatusEnum.Blocked)
+                                        {
+                                            <button class="btn-retry-sm" @onclick="() => RetryTask(task)">Retry from here</button>
+                                        }
+                                        else if (task.Status == TaskStatusEnum.Completed)
+                                        {
+                                            <button class="btn-rerun-sm" @onclick="() => RetryTask(task)">Rerun from here</button>
+                                        }
+                                    </div>
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(task.ErrorMessage))
+                                {
+                                    <div class="workflow-task-error-banner">
+                                        <span class="error-label">Error:</span> @task.ErrorMessage
+                                    </div>
+                                }
+
+                                <details class="workflow-task-detail">
+                                    <summary>Details</summary>
+                                    <div class="workflow-task-body">
+                                        <div class="workflow-task-block">
+                                            <span class="label">Instructions</span>
+                                            <p>@(string.IsNullOrWhiteSpace(task.Instructions) ? "No instructions saved yet." : task.Instructions)</p>
+                                        </div>
+                                        <div class="workflow-task-block">
+                                            <span class="label">Output</span>
+                                            <div class="artifact-placeholder">@FormatJsonBlock(task.OutputDataJson)</div>
+                                        </div>
+                                    </div>
+                                </details>
+                            </div>
+                        }
+                    </div>
+                }
+            </section>
+        }
+        else if (ActiveTab == WorkflowTab.Artifacts)
+        {
+            <section class="dashboard-card compact-card">
+                <div class="widget-title">Generated Artifacts</div>
+
+                @if (Artifacts is null)
+                {
+                    <p class="text-center">Loading artifacts...</p>
+                }
+                else if (!Artifacts.Any())
+                {
+                    <p class="text-center">No artifacts generated yet.</p>
+                }
+                else
+                {
+                    <div class="workflow-artifact-list">
+                        @foreach (var artifact in VisibleArtifacts)
+                        {
+                            var payload = ParseArtifactJson(artifact.ContentJson);
+                            <div class="workflow-artifact-card">
+                                <div class="workflow-artifact-top">
+                                    <div>
+                                        <div class="workflow-task-order">@artifact.ArtifactType</div>
+                                        <div class="workflow-task-name">@artifact.Title</div>
+                                        <div class="workflow-task-meta">@artifact.CreatedByAgent • @artifact.CreatedUtc.ToString("yyyy-MM-dd HH:mm") UTC</div>
+                                    </div>
+                                </div>
+
+                                <p class="artifact-summary-copy">@GetArtifactSummary(artifact, payload)</p>
+
+                                <details class="artifact-detail">
+                                    <summary>Open details</summary>
+                                    @if (artifact.ArtifactType == "ContentBrief")
+                                    {
+                                        <div class="artifact-preview-grid">
+                                            <div class="artifact-preview-block">
+                                                <span class="label">Working title</span>
+                                                <p>@GetJsonString(payload, "workingTitle")</p>
+                                            </div>
+                                            <div class="artifact-preview-block full-span">
+                                                <span class="label">Brief</span>
+                                                <ul class="artifact-list">
+                                                    @foreach (var item in GetJsonArray(payload, "brief"))
+                                                    {
+                                                        <li>@item</li>
+                                                    }
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    }
+                                    else if (artifact.ArtifactType == "ArticleOutline")
+                                    {
+                                        <div class="artifact-preview-grid">
+                                            <div class="artifact-preview-block full-span">
+                                                <span class="label">Headline</span>
+                                                <p>@GetJsonString(payload, "headline")</p>
+                                            </div>
+                                            <div class="artifact-preview-block full-span">
+                                                <span class="label">Sections</span>
+                                                <ol class="artifact-list artifact-list-numbered">
+                                                    @foreach (var item in GetJsonArray(payload, "sections"))
+                                                    {
+                                                        <li>@item</li>
+                                                    }
+                                                </ol>
+                                            </div>
+                                        </div>
+                                    }
+                                    else if (artifact.ArtifactType == "DraftArticle")
+                                    {
+                                        <div class="artifact-preview-grid">
+                                            <div class="artifact-preview-block">
+                                                <span class="label">Estimated words</span>
+                                                <p>@GetJsonString(payload, "estimatedWordCount")</p>
+                                            </div>
+                                            <div class="artifact-preview-block">
+                                                <span class="label">Read time</span>
+                                                <p>@GetJsonString(payload, "estimatedReadTimeMinutes") min</p>
+                                            </div>
+                                            <div class="artifact-preview-block full-span">
+                                                <span class="label">Draft preview</span>
+                                                <p>@TruncateText(GetJsonString(payload, "intro"), 280)</p>
+                                            </div>
+                                        </div>
+                                    }
+                                    else if (artifact.ArtifactType == "AiseoOptimizationReport")
+                                    {
+                                        <div class="artifact-preview-grid">
+                                            <div class="artifact-preview-block">
+                                                <span class="label">Optimized</span>
+                                                <p>@(GetJsonBool(payload, "optimized") ? "Yes" : "No")</p>
+                                            </div>
+                                            <div class="artifact-preview-block full-span">
+                                                <span class="label">AISEO notes</span>
+                                                <ul class="artifact-list">
+                                                    @foreach (var item in GetJsonArray(payload, "notes"))
+                                                    {
+                                                        <li>@item</li>
+                                                    }
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    }
+                                    else if (artifact.ArtifactType == "PublishPackage")
+                                    {
+                                        <div class="artifact-preview-grid">
+                                            <div class="artifact-preview-block">
+                                                <span class="label">Title</span>
+                                                <p>@GetJsonString(payload, "title")</p>
+                                            </div>
+                                            <div class="artifact-preview-block">
+                                                <span class="label">Slug</span>
+                                                <p>@GetJsonString(payload, "slug")</p>
+                                            </div>
+                                        </div>
+                                    }
+                                    else if (artifact.ArtifactType == "FeaturedImageAsset" || artifact.ArtifactType == "SupportingImageAsset")
+                                    {
+                                        <div class="artifact-preview-grid">
+                                            <div class="artifact-preview-block">
+                                                <span class="label">Role</span>
+                                                <p>@GetJsonString(payload, "imageRole")</p>
+                                            </div>
+                                            <div class="artifact-preview-block">
+                                                <span class="label">Status</span>
+                                                <p>@GetJsonString(payload, "status")</p>
+                                            </div>
+                                            <div class="artifact-preview-block">
+                                                <span class="label">Aspect ratio</span>
+                                                <p>@GetJsonString(payload, "aspectRatio")</p>
+                                            </div>
+                                            <div class="artifact-preview-block">
+                                                <span class="label">Dimensions</span>
+                                                <p>@GetJsonString(payload, "width") × @GetJsonString(payload, "height")</p>
+                                            </div>
+                                            <div class="artifact-preview-block full-span">
+                                                <span class="label">Prompt</span>
+                                                <p>@GetJsonString(payload, "prompt")</p>
+                                            </div>
+                                            <div class="artifact-preview-block full-span">
+                                                <span class="label">Alt text</span>
+                                                <p>@GetJsonString(payload, "altText")</p>
+                                            </div>
+                                        </div>
+                                    }
+                                    else if (artifact.ArtifactType == "SerpBenchmark")
+                                    {
+                                        <div class="artifact-preview-grid">
+                                            <div class="artifact-preview-block">
+                                                <span class="label">Results analyzed</span>
+                                                <p>@GetJsonString(payload, "resultCount")</p>
+                                            </div>
+                                            <div class="artifact-preview-block">
+                                                <span class="label">Average words</span>
+                                                <p>@GetJsonString(payload, "averageWordCount")</p>
+                                            </div>
+                                            <div class="artifact-preview-block">
+                                                <span class="label">Primary keyword avg</span>
+                                                <p>@GetJsonString(payload, "averagePrimaryKeywordCount")</p>
+                                            </div>
+                                            <div class="artifact-preview-block">
+                                                <span class="label">Recommended words</span>
+                                                <p>@GetJsonString(payload, "recommendedWordCountMin")-@GetJsonString(payload, "recommendedWordCountMax")</p>
+                                            </div>
+                                            <div class="artifact-preview-block full-span">
+                                                <span class="label">Related keyword targets</span>
+                                                <div class="tag-row">
+                                                    @foreach (var item in GetBenchmarkKeywordChips(payload))
+                                                    {
+                                                        <span class="badge-neutral">@item</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                    else if (artifact.ArtifactType == "TopicPacket")
+                                    {
+                                        <div class="artifact-preview-grid">
+                                            <div class="artifact-preview-block">
+                                                <span class="label">Topic</span>
+                                                <p>@GetJsonString(payload, "topic")</p>
+                                            </div>
+                                            <div class="artifact-preview-block">
+                                                <span class="label">Primary keyword</span>
+                                                <p>@GetJsonString(payload, "primaryKeyword")</p>
+                                            </div>
+                                            <div class="artifact-preview-block">
+                                                <span class="label">Intent</span>
+                                                <p>@GetJsonString(payload, "intent")</p>
+                                            </div>
+                                            <div class="artifact-preview-block">
+                                                <span class="label">Pain point</span>
+                                                <p>@GetJsonString(payload, "painPoint")</p>
+                                            </div>
+                                            <div class="artifact-preview-block">
+                                                <span class="label">Goal</span>
+                                                <p>@GetJsonString(payload, "goal")</p>
+                                            </div>
+                                            <div class="artifact-preview-block">
+                                                <span class="label">Recommended angle</span>
+                                                <p>@GetJsonString(payload, "recommendedAngle")</p>
+                                            </div>
+                                            <div class="artifact-preview-block">
+                                                <span class="label">Summary</span>
+                                                <p>@GetJsonString(payload, "summary")</p>
+                                            </div>
+                                            <div class="artifact-preview-block">
+                                                <span class="label">Slug</span>
+                                                <p>@GetJsonString(payload, "slug")</p>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="artifact-placeholder">@artifact.ContentJson</div>
+                                    }
+                                </details>
+                            </div>
+                        }
+                    </div>
+                }
+            </section>
+        }
+        else if (ActiveTab == WorkflowTab.FinalArticle)
+        {
+            @if (FinalArticlePreview is null)
+            {
+                <section class="dashboard-card compact-card">
+                    <div class="widget-title">Final Article</div>
+                    <p class="text-center">No final article preview has been generated yet.</p>
+                </section>
+            }
+            else
+            {
+                <section class="dashboard-card compact-card final-editor-shell">
+                    <div class="widget-title">Editorial Mode</div>
+
+                    @if (EditorModel is null)
+                    {
+                        <p class="text-center">Loading final article...</p>
+                    }
+                    else
+                    {
+                        <div class="editor-layout">
+                            <div class="editor-main-pane">
+                                <div class="editor-top-strip">
+                                    <div class="editor-pill-row">
+                                        @if (!string.IsNullOrWhiteSpace(EditorModel.ContentType))
+                                        {
+                                            <span class="editor-pill">@FormatLabel(EditorModel.ContentType)</span>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(EditorModel.PrimaryKeyword))
+                                        {
+                                            <span class="editor-pill editor-pill-muted">@EditorModel.PrimaryKeyword</span>
+                                        }
+                                    </div>
+                                    <div class="editor-status-box">
+                                        <span class="label">Status</span>
+                                        <strong>@(Job?.Status ?? "Draft")</strong>
+                                    </div>
+                                </div>
+
+                                <div class="editor-header-fields">
+                                    <label class="editor-field">
+                                        <span class="label">Title</span>
+                                        <input @bind="EditorModel.Title" />
+                                    </label>
+                                    <label class="editor-field">
+                                        <span class="label">Slug</span>
+                                        <input @bind="EditorModel.Slug" />
+                                    </label>
+                                    <label class="editor-field full-span">
+                                        <span class="label">Summary</span>
+                                        <textarea @bind="EditorModel.Summary" rows="2"></textarea>
+                                    </label>
+                                </div>
+
+                                <div id="@EditorElementId" class="contentos-editorjs-holder" data-editor-ready="false"></div>
+                            </div>
+
+                            <aside class="editor-sidebar-pane">
+                                <div class="editor-sidebar-tabs">
+                                    <button type="button" class="editor-sidebar-tab editor-sidebar-tab-active">SEO</button>
+                                    <button type="button" class="editor-sidebar-tab">Research</button>
+                                    <button type="button" class="editor-sidebar-tab">Media</button>
+                                    <button type="button" class="editor-sidebar-tab">History</button>
+                                </div>
+
+                                <div class="editor-side-card">
+                                    <div class="editor-side-title">Optimization</div>
+                                    <div class="optimization-score-card">
+                                        <div>
+                                            <div class="optimization-score-label">Optimization Score</div>
+                                            <div class="optimization-score-value">@SidebarOptimizationScore<span>/100</span></div>
+                                            <div class="optimization-status-row">
+                                                <span class="optimization-pill @SidebarOptimizationScoreClass">@SidebarOptimizationStatusLabel</span>
+                                                <span class="optimization-pill @(SidebarPublishReady ? "optimization-score-strong" : "optimization-score-weak")">@(SidebarPublishReady ? "Publish Ready" : "Hold")</span>
+                                            </div>
+                                        </div>
+                                        <div class="optimization-score-meter">
+                                            <div class="optimization-score-fill @SidebarOptimizationScoreClass" style="width:@($"{SidebarOptimizationScore}%")"></div>
+                                        </div>
+                                    </div>
+                                    <div class="editor-stats-grid optimization-breakdown-grid">
+                                        <div class="editor-stat-card">
+                                            <strong>@SidebarHighPriorityScore</strong>
+                                            <span>High Priority</span>
+                                            <small>Target 70+</small>
+                                        </div>
+                                        <div class="editor-stat-card">
+                                            <strong>@SidebarLowPriorityScore</strong>
+                                            <span>Low Priority</span>
+                                            <small>Support score</small>
+                                        </div>
+                                        <div class="editor-stat-card">
+                                            <strong>@SidebarStuffingRiskScore</strong>
+                                            <span>Stuffing Risk</span>
+                                            <small>@SidebarStuffingRiskLabel</small>
+                                        </div>
+                                        <div class="editor-stat-card">
+                                            <strong>@SidebarStuffingPenaltyApplied</strong>
+                                            <span>Penalty</span>
+                                            <small>Applied to score</small>
+                                        </div>
+                                    </div>
+                                    <div class="editor-stats-grid">
+                                        <div class="editor-stat-card">
+                                            <strong>@SidebarWordCount</strong>
+                                            <span>Words</span>
+                                            <small>@SidebarWordTargetLabel</small>
+                                        </div>
+                                        <div class="editor-stat-card">
+                                            <strong>@SidebarMediaCount</strong>
+                                            <span>Media</span>
+                                            <small>@SidebarMediaTargetLabel</small>
+                                        </div>
+                                        <div class="editor-stat-card">
+                                            <strong>@SidebarLinksCount</strong>
+                                            <span>Links</span>
+                                            <small>@SidebarLinksTargetLabel</small>
+                                        </div>
+                                        <div class="editor-stat-card">
+                                            <strong>@SidebarChecklistCompleted</strong>
+                                            <span>Checklist</span>
+                                            <small>@SidebarChecklistTargetLabel</small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="editor-side-card">
+                                    <div class="editor-side-title">Keywords and Entities</div>
+                                    <div class="keyword-chip-grid">
+                                        @foreach (var chip in SidebarKeywordChips)
+                                        {
+                                            <div class="keyword-chip-card @MapKeywordChipClass(chip.Score)">
+                                                <div class="keyword-chip-name">@chip.Keyword</div>
+                                                <div class="keyword-chip-meta">@chip.ActualCount / @chip.TargetMin-@chip.TargetMax</div>
+                                            </div>
+                                        }
+                                    </div>
+                                    @if (SidebarMissingRelatedKeywords.Any())
+                                    {
+                                        <div class="optimization-list-block">
+                                            <div class="optimization-list-title">Missing related keywords</div>
+                                            <ul class="artifact-list">
+                                                @foreach (var keyword in SidebarMissingRelatedKeywords)
+                                                {
+                                                    <li>@keyword</li>
+                                                }
+                                            </ul>
+                                        </div>
+                                    }
+                                    @if (SidebarOverusedKeywords.Any())
+                                    {
+                                        <div class="optimization-list-block">
+                                            <div class="optimization-list-title">Overused keywords</div>
+                                            <ul class="artifact-list">
+                                                @foreach (var keyword in SidebarOverusedKeywords)
+                                                {
+                                                    <li>@keyword</li>
+                                                }
+                                            </ul>
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="editor-side-card">
+                                    <div class="editor-side-title">Visual Assets</div>
+                                    <div class="editor-image-gallery">
+                                        @foreach (var artifact in Artifacts?.Where(a => a.ArtifactType is "FeaturedImageAsset" or "SupportingImageAsset").OrderBy(a => a.CreatedUtc) ?? Enumerable.Empty<ContentArtifact>())
+                                        {
+                                            var payload = ParseArtifactJson(artifact.ContentJson);
+                                            <div class="editor-image-asset">
+                                                <div class="editor-image-preview">
+                                                    <img src="@GetJsonString(payload, "imagePath")" alt="@GetJsonString(payload, "altText")" loading="lazy" referrerpolicy="no-referrer" />
+                                                </div>
+                                                <div class="editor-image-meta">
+                                                    <div class="editor-image-title">@artifact.Title</div>
+                                                    <div class="editor-image-placement">📍 @GetJsonString(payload, "suggestedPlacement")</div>
+                                                    <div class="editor-image-actions">
+                                                        <button class="btn-secondary btn-sm" @onclick='() => InsertImageIntoEditor(GetJsonString(payload, "imagePath"), GetJsonString(payload, "altText"))'>Insert</button>
+                                                        <button class="btn-secondary btn-sm" @onclick='() => RegenerateImageAsync(artifact.Id)' disabled="@IsRegeneratingImage">@(IsRegeneratingImage ? "Regenerating..." : "Regenerate")</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="editor-side-card">
+                                    <div class="editor-side-title">SEO</div>
+                                    <label class="editor-field full-span">
+                                        <span class="label">Meta description</span>
+                                        <textarea @bind="EditorModel.MetaDescription" rows="4"></textarea>
+                                    </label>
+                                    <label class="editor-field full-span">
+                                        <span class="label">Keyword strength signal</span>
+                                        <textarea @bind="EditorModel.KeywordStrengthReason" rows="3"></textarea>
+                                    </label>
+                                    <label class="editor-field full-span">
+                                        <span class="label">Next step CTA</span>
+                                        <textarea @bind="EditorModel.CallToAction" rows="3"></textarea>
+                                    </label>
+                                </div>
+
+                                <div class="editor-side-actions">
+                                    <a class="btn-secondary" href="@($"/workflow-job/{JobId}/preview")">Open Read Mode</a>
+                                    <button type="button" class="btn-primary" @onclick="SaveFinalArticleAsync" disabled="@IsSavingEditor">@(IsSavingEditor ? "Saving..." : "Save Article")</button>
+                                    @if (!string.IsNullOrWhiteSpace(EditorSaveMessage))
+                                    {
+                                        <p class="editor-save-message">@EditorSaveMessage</p>
+                                    }
+                                </div>
+                            </aside>
+                        </div>
+                    }
+                </section>
+            }
+        }
+    }
+</div>
+
+@code {
+    private enum WorkflowTab
+    {
+        Overview,
+        Tasks,
+        Artifacts,
+        FinalArticle
+    }
+
+    [Parameter] public Guid JobId { get; set; }
+
+    private ContentWorkflowJob? Job;
+    private ContentIdea? Idea;
+    private List<ContentWorkflowTask>? Tasks;
+    private List<ContentArtifact>? Artifacts;
+    private WorkflowJobVersionInfoDto? WorkflowVersionInfo;
+    private WorkflowTab ActiveTab = WorkflowTab.Overview;
+    private FinalArticleEditorModel? EditorModel;
+    private bool IsSavingEditor;
+    private bool IsRegeneratingImage;
+    private bool ShouldHydrateEditor;
+    private string? EditorSaveMessage;
+    private string EditorElementId => $"final-article-editor-{JobId}";
+    private Timer? _autosaveTimer;
+    private bool _editorDirty;
+    private string _lastSavedHtml = string.Empty;
+    private const int AutosaveIntervalSeconds = 30;
+
+    public async ValueTask DisposeAsync()
+    {
+        StopAutosaveTimer();
+        try
+        {
+            await JS.InvokeVoidAsync("contentOsEditor.destroy", EditorElementId);
+        }
+        catch
+        {
+            // Component may be disposing after JS runtime is gone
+        }
+    }
+    private int EditorWordCount => CountWordsFromHtml(EditorModel?.BodyHtml ?? string.Empty);
+    private int EditorLinkCount => CountLinksFromHtml(EditorModel?.BodyHtml ?? string.Empty);
+    private int EditorMediaCount => VisibleArtifacts.Count(x => x.ArtifactType is "FeaturedImageAsset" or "SupportingImageAsset");
+    private int ChecklistTotal => 5;
+    private int ChecklistCompleted => CountChecklistCompleted();
+    private int OptimizationScore => CalculateOptimizationScore();
+    private string OptimizationScoreClass => OptimizationScore >= 75 ? "optimization-score-strong" : OptimizationScore >= 55 ? "optimization-score-medium" : "optimization-score-weak";
+    private ContentArtifact? LatestOptimizationReport => Artifacts?
+        .Where(x => x.ArtifactType == "OptimizationScoreReport")
+        .OrderByDescending(x => x.CreatedUtc)
+        .FirstOrDefault();
+
+    private ContentArtifact? LatestSerpBenchmark => Artifacts?
+        .Where(x => x.ArtifactType == "SerpBenchmark")
+        .OrderByDescending(x => x.CreatedUtc)
+        .FirstOrDefault();
+    private ContentArtifact? LatestSeoOptimization => Artifacts?
+        .Where(x => x.ArtifactType == "SeoOptimization")
+        .OrderByDescending(x => x.CreatedUtc)
+        .FirstOrDefault();
+    private ContentArtifact? LatestKeywordStrategy => Artifacts?
+        .Where(x => x.ArtifactType == "KeywordStrategy")
+        .OrderByDescending(x => x.CreatedUtc)
+        .FirstOrDefault();
+    private ContentArtifact? LatestDraftArticle => Artifacts?
+        .Where(x => x.ArtifactType == "DraftArticle")
+        .OrderByDescending(x => x.CreatedUtc)
+        .FirstOrDefault();
+    private int SidebarOptimizationScore => GetOptimizationReportInt("optimizationScore", OptimizationScore);
+    private string SidebarOptimizationScoreClass => SidebarOptimizationScore >= 75 ? "optimization-score-strong" : SidebarOptimizationScore >= 55 ? "optimization-score-medium" : "optimization-score-weak";
+    private string SidebarOptimizationStatusLabel => GetOptimizationReportString("statusLabel", SidebarOptimizationScore >= 75 ? "Strong" : SidebarOptimizationScore >= 55 ? "Fair" : "Optimization Opportunity");
+    private int SidebarHighPriorityScore => GetOptimizationReportInt("highPriorityScore", 0);
+    private int SidebarLowPriorityScore => GetOptimizationReportInt("lowPriorityScore", 0);
+    private int SidebarStuffingRiskScore => GetOptimizationReportInt("stuffingRiskScore", 0);
+    private string SidebarStuffingRiskLabel => GetOptimizationReportString("stuffingRiskLabel", SidebarStuffingRiskScore >= 60 ? "High" : SidebarStuffingRiskScore >= 40 ? "Moderate" : "Natural");
+    private int SidebarStuffingPenaltyApplied => GetOptimizationReportInt("stuffingPenaltyApplied", 0);
+    private bool SidebarPublishReady => GetOptimizationReportBool("publishReady");
+    private int SidebarWordCount => GetOptimizationReportInt("actualWordCount", EditorWordCount);
+    private int SidebarLinksCount => GetOptimizationReportInt("actualLinksCount", EditorLinkCount);
+    private int SidebarMediaCount => GetOptimizationReportInt("actualMediaCount", EditorMediaCount);
+    private int SidebarChecklistCompleted => GetOptimizationReportInt("completedChecklistItems", ChecklistCompleted);
+    private string SidebarWordTargetLabel => $"{GetOptimizationReportInt("targetWordCountMin", SafeInt(EditorModel?.TargetWordCountMin ?? "0", 0))}-{GetOptimizationReportInt("targetWordCountMax", SafeInt(EditorModel?.TargetWordCountMax ?? "0", 0))}";
+    private string SidebarLinksTargetLabel => $"{GetOptimizationReportInt("targetLinksMin", 2)}-{GetOptimizationReportInt("targetLinksMax", 5)}";
+    private string SidebarMediaTargetLabel => $"{GetOptimizationReportInt("targetMediaMin", 1)}-{GetOptimizationReportInt("targetMediaMax", 3)}";
+    private string SidebarChecklistTargetLabel => $"{GetOptimizationReportInt("targetChecklistMin", 8)}-{GetOptimizationReportInt("targetChecklistMax", 10)}";
+    private IEnumerable<KeywordChipViewModel> SidebarKeywordChips => GetSidebarKeywordChips();
+    private IEnumerable<string> SidebarMissingRelatedKeywords => GetOptimizationReportStringArray("missingRelatedKeywords");
+    private IEnumerable<string> SidebarOverusedKeywords => GetOptimizationReportStringArray("overusedKeywords");
+
+    private ContentArtifact? FinalArticlePreview => Artifacts?
+        .Where(x => x.ArtifactType == "FinalArticlePreview")
+        .OrderByDescending(x => x.CreatedUtc)
+        .FirstOrDefault();
+
+    private ContentWorkflowTask? CurrentTask => Tasks?
+        .OrderBy(x => x.DisplayOrder)
+        .FirstOrDefault(x => x.Status == TaskStatusEnum.Ready || x.Status == TaskStatusEnum.InProgress)
+        ?? Tasks?.OrderByDescending(x => x.DisplayOrder).FirstOrDefault(x => x.Status == TaskStatusEnum.Completed);
+
+    private IEnumerable<ContentWorkflowTask> OrderedTasks => Tasks?
+        .OrderBy(x => x.DisplayOrder)
+        ?? Enumerable.Empty<ContentWorkflowTask>();
+
+    private IEnumerable<ContentArtifact> VisibleArtifacts => Artifacts?
+        .Where(x => x.ArtifactType != "FinalArticlePreview")
+        .OrderByDescending(x => x.CreatedUtc)
+        ?? Enumerable.Empty<ContentArtifact>();
+
+    private int TaskCount => Tasks?.Count ?? 0;
+    private int ReadyCount => CountTasksByStatus(TaskStatusEnum.Ready);
+    private int InProgressCount => CountTasksByStatus(TaskStatusEnum.InProgress);
+    private int CompletedCount => CountTasksByStatus(TaskStatusEnum.Completed);
+    private int PendingCount => CountTasksByStatus(TaskStatusEnum.Pending);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadJobData();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (ShouldHydrateEditor && EditorModel is not null)
+        {
+            ShouldHydrateEditor = false;
+            var initData = !string.IsNullOrWhiteSpace(EditorModel.EditorJson) ? EditorModel.EditorJson : EditorModel.BodyHtml;
+            try
+            {
+                await JS.InvokeVoidAsync("contentOsEditor.initWhenReady", EditorElementId, initData);
+                StartAutosaveTimer();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ContentOS] Editor init failed: {ex.Message}");
+            }
+            StateHasChanged();
+        }
+    }
+
+    private void StartAutosaveTimer()
+    {
+        StopAutosaveTimer();
+        _autosaveTimer = new Timer(async _ =>
+        {
+            await InvokeAsync(AutosaveEditorAsync);
+        }, null, TimeSpan.FromSeconds(AutosaveIntervalSeconds), TimeSpan.FromSeconds(AutosaveIntervalSeconds));
+    }
+
+    private void StopAutosaveTimer()
+    {
+        _autosaveTimer?.Dispose();
+        _autosaveTimer = null;
+    }
+
+    private async Task AutosaveEditorAsync()
+    {
+        if (EditorModel is null || FinalArticlePreview is null || IsSavingEditor) return;
+
+        try
+        {
+            var editorJson = await JS.InvokeAsync<string>("contentOsEditor.getJson", EditorElementId);
+            var editorHtml = await JS.InvokeAsync<string>("contentOsEditor.getHtml", EditorElementId);
+
+            if (string.IsNullOrWhiteSpace(editorHtml)) return;
+
+            // Skip if content hasn't changed since last save
+            var currentSnapshot = editorHtml;
+            if (currentSnapshot == _lastSavedHtml) return;
+            _lastSavedHtml = currentSnapshot;
+
+            EditorModel.BodyHtml = editorHtml;
+            EditorModel.EditorJson = editorJson;
+            EditorModel.EstimatedWordCount = CountWordsFromHtml(editorHtml).ToString();
+            EditorModel.EstimatedReadTimeMinutes = Math.Max(1, (int)Math.Ceiling(CountWordsFromHtml(editorHtml) / 220m)).ToString();
+
+            var payload = new FinalArticleArtifactPayload
+            {
+                Title = EditorModel.Title,
+                Slug = EditorModel.Slug,
+                PrimaryKeyword = EditorModel.PrimaryKeyword,
+                KeywordStrengthLabel = EditorModel.KeywordStrengthLabel,
+                KeywordStrengthScore = EditorModel.KeywordStrengthScore,
+                KeywordStrengthReason = EditorModel.KeywordStrengthReason,
+                ContentType = EditorModel.ContentType,
+                Summary = EditorModel.Summary,
+                MetaDescription = EditorModel.MetaDescription,
+                TargetWordCountMin = EditorModel.TargetWordCountMin,
+                TargetWordCountMax = EditorModel.TargetWordCountMax,
+                EstimatedWordCount = EditorModel.EstimatedWordCount,
+                EstimatedReadTimeMinutes = EditorModel.EstimatedReadTimeMinutes,
+                CallToAction = EditorModel.CallToAction,
+                HtmlBody = editorHtml,
+                EditorJson = editorJson,
+                ManuallyEdited = true
+            };
+
+            var contentJson = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+            var contentText = BuildPlainTextFromHtml(EditorModel.Title, EditorModel.Summary, EditorModel.BodyHtml, EditorModel.CallToAction);
+
+            var success = await Mediator.Send(new UpdateContentArtifactCommand(
+                EditorModel.ArtifactId,
+                contentJson,
+                contentText,
+                "Autosave"));
+
+            if (success)
+            {
+                FinalArticlePreview.ContentJson = contentJson;
+                FinalArticlePreview.ContentText = contentText;
+                EditorSaveMessage = $"Autosaved at {DateTime.UtcNow:HH:mm} UTC";
+            }
+        }
+        catch
+        {
+            // Autosave failures are silent — don't disrupt the user
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private void SetActiveTab(WorkflowTab tab)
+    {
+        ActiveTab = tab;
+        if (tab == WorkflowTab.FinalArticle && EditorModel is not null)
+        {
+            ShouldHydrateEditor = true;
+        }
+    }
+
+    private async Task LoadJobData()
+    {
+        Job = await Mediator.Send(new GetWorkflowJobByIdQuery(JobId));
+        Tasks = (await Mediator.Send(new GetWorkflowTasksByJobQuery(JobId))).ToList();
+        Artifacts = (await Mediator.Send(new GetContentArtifactsByJobQuery(JobId))).ToList();
+        WorkflowVersionInfo = await Mediator.Send(new GetWorkflowJobVersionInfoQuery(JobId));
+
+        if (Job is not null)
+        {
+            Idea = (await Mediator.Send(new GetContentIdeasQuery())).FirstOrDefault(x => x.Id == Job.ContentIdeaId);
+        }
+
+        if (FinalArticlePreview is not null)
+        {
+            ActiveTab = WorkflowTab.FinalArticle;
+        }
+
+        InitializeEditorModel();
+    }
+
+    private void InitializeEditorModel()
+    {
+        if (FinalArticlePreview is null)
+        {
+            EditorModel = null;
+            return;
+        }
+
+        var payload = ParseArtifactJson(FinalArticlePreview.ContentJson);
+        if (payload is null)
+        {
+            EditorModel = null;
+            return;
+        }
+
+        var htmlBody = GetJsonString(payload, "htmlBody");
+        var editorJson = GetJsonString(payload, "editorJson");
+
+        // Prefer Editor.js JSON as source of truth; fall back to HTML
+        var bodyForEditor = !string.IsNullOrWhiteSpace(editorJson) ? editorJson : htmlBody;
+
+        if (string.IsNullOrWhiteSpace(bodyForEditor))
+        {
+            htmlBody = BuildHtmlBody(payload);
+            bodyForEditor = htmlBody;
+        }
+        else if (string.IsNullOrWhiteSpace(htmlBody))
+        {
+            htmlBody = BuildHtmlBody(payload);
+        }
+
+        EditorModel = new FinalArticleEditorModel
+        {
+            ArtifactId = FinalArticlePreview.Id,
+            Title = GetJsonString(payload, "title"),
+            Slug = GetJsonString(payload, "slug"),
+            Summary = GetJsonString(payload, "summary"),
+            MetaDescription = GetJsonString(payload, "metaDescription"),
+            PrimaryKeyword = GetJsonString(payload, "primaryKeyword"),
+            KeywordStrengthLabel = GetJsonString(payload, "keywordStrengthLabel"),
+            KeywordStrengthScore = GetJsonString(payload, "keywordStrengthScore"),
+            KeywordStrengthReason = GetJsonString(payload, "keywordStrengthReason"),
+            ContentType = GetJsonString(payload, "contentType"),
+            TargetWordCountMin = GetJsonString(payload, "targetWordCountMin"),
+            TargetWordCountMax = GetJsonString(payload, "targetWordCountMax"),
+            EstimatedWordCount = GetJsonString(payload, "estimatedWordCount"),
+            EstimatedReadTimeMinutes = GetJsonString(payload, "estimatedReadTimeMinutes"),
+            CallToAction = GetJsonString(payload, "callToAction"),
+            BodyHtml = htmlBody,
+            EditorJson = editorJson
+        };
+
+        ShouldHydrateEditor = ActiveTab == WorkflowTab.FinalArticle;
+        _lastSavedHtml = htmlBody;
+    }
+
+    private async Task ExecuteEditorCommand(string command, string? value = null)
+    {
+        // No-op: Editor.js is block-based, not exec-command based.
+        // Block insertions go through the Editor.js API instead.
+    }
+
+    private async Task InsertImageIntoEditor(string imagePath, string altText)
+    {
+        // Editor.js handles images natively via its Image block tool
+        // For now, we insert as a paragraph with an img tag as fallback
+        // A richer approach would insert an Image block directly via the Editor.js API
+        if (string.IsNullOrWhiteSpace(imagePath))
+        {
+            return;
+        }
+
+        await JS.InvokeVoidAsync("contentOsEditor.insertImageBlock", EditorElementId, imagePath, altText);
+    }
+
+    private async Task RegenerateImageAsync(Guid artifactId)
+    {
+        if (IsRegeneratingImage)
+        {
+            return;
+        }
+
+        IsRegeneratingImage = true;
+        EditorSaveMessage = null;
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync($"api/v1/artifacts/{artifactId}/regenerate-image", new { requestedBy = "Human Editor" });
+            if (!response.IsSuccessStatusCode)
+            {
+                EditorSaveMessage = "Image regeneration failed.";
+                return;
+            }
+
+            await LoadJobData();
+            EditorSaveMessage = $"Image regenerated at {DateTime.UtcNow:HH:mm} UTC";
+            StateHasChanged();
+        }
+        finally
+        {
+            IsRegeneratingImage = false;
+        }
+    }
+
+    private static string EscapeHtmlAttribute(string? value)
+        => string.IsNullOrWhiteSpace(value)
+            ? string.Empty
+            : value
+                .Replace("&", "&amp;", StringComparison.Ordinal)
+                .Replace("\"", "&quot;", StringComparison.Ordinal)
+                .Replace("<", "&lt;", StringComparison.Ordinal)
+                .Replace(">", "&gt;", StringComparison.Ordinal);
+
+    private async Task SaveFinalArticleAsync()
+    {
+        if (EditorModel is null || FinalArticlePreview is null)
+        {
+            return;
+        }
+
+        IsSavingEditor = true;
+        EditorSaveMessage = null;
+
+        try
+        {
+            var editorJson = await JS.InvokeAsync<string>("contentOsEditor.getJson", EditorElementId);
+            var editorHtml = await JS.InvokeAsync<string>("contentOsEditor.getHtml", EditorElementId);
+
+            EditorModel.BodyHtml = editorHtml;
+            EditorModel.EstimatedWordCount = CountWordsFromHtml(editorHtml).ToString();
+            EditorModel.EstimatedReadTimeMinutes = Math.Max(1, (int)Math.Ceiling(CountWordsFromHtml(editorHtml) / 220m)).ToString();
+
+            var payload = new FinalArticleArtifactPayload
+            {
+                Title = EditorModel.Title,
+                Slug = EditorModel.Slug,
+                PrimaryKeyword = EditorModel.PrimaryKeyword,
+                KeywordStrengthLabel = EditorModel.KeywordStrengthLabel,
+                KeywordStrengthScore = EditorModel.KeywordStrengthScore,
+                KeywordStrengthReason = EditorModel.KeywordStrengthReason,
+                ContentType = EditorModel.ContentType,
+                Summary = EditorModel.Summary,
+                MetaDescription = EditorModel.MetaDescription,
+                TargetWordCountMin = EditorModel.TargetWordCountMin,
+                TargetWordCountMax = EditorModel.TargetWordCountMax,
+                EstimatedWordCount = EditorModel.EstimatedWordCount,
+                EstimatedReadTimeMinutes = EditorModel.EstimatedReadTimeMinutes,
+                CallToAction = EditorModel.CallToAction,
+                HtmlBody = editorHtml,
+                EditorJson = editorJson,
+                ManuallyEdited = true
+            };
+
+            var contentJson = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+            var contentText = BuildPlainTextFromHtml(EditorModel.Title, EditorModel.Summary, EditorModel.BodyHtml, EditorModel.CallToAction);
+
+            var success = await Mediator.Send(new UpdateContentArtifactCommand(
+                EditorModel.ArtifactId,
+                contentJson,
+                contentText,
+                "Human Editor"));
+
+            if (!success)
+            {
+                EditorSaveMessage = "Could not save the article.";
+                return;
+            }
+
+            FinalArticlePreview.ContentJson = contentJson;
+            FinalArticlePreview.ContentText = contentText;
+            _lastSavedHtml = editorHtml;
+            EditorSaveMessage = $"Saved at {DateTime.UtcNow:HH:mm} UTC";
+        }
+        finally
+        {
+            IsSavingEditor = false;
+        }
+    }
+
+    private string BuildHtmlBody(JsonElement? payload)
+    {
+        if (payload is null)
+        {
+            return string.Empty;
+        }
+
+        var imageBlocks = GetGeneratedImageHtmlBlocks().ToList();
+        var blocks = new List<string>();
+        blocks.AddRange(GetArticleParagraphs(payload, "introParagraphs", "intro").Select(RenderHtmlBlock));
+
+        var sections = GetFinalArticleSections(payload).ToList();
+        if (sections.Count > 0)
+        {
+            blocks.Add("<section class=\"article-read-section article-read-toc\"><h2>Table of Contents</h2><ul>" +
+                       string.Join(string.Empty, sections.Select(section => $"<li><a href=\"#{BuildAnchorId(section.Heading)}\">{System.Net.WebUtility.HtmlEncode(section.Heading)}</a></li>")) +
+                       "<li><a href=\"#conclusion\">Conclusion</a></li><li><a href=\"#next-step\">Next step</a></li></ul></section>");
+        }
+
+        if (imageBlocks.Count > 0)
+        {
+            blocks.Add(imageBlocks[0]);
+        }
+
+        var supportingImageIndex = 1;
+        for (var index = 0; index < sections.Count; index++)
+        {
+            var section = sections[index];
+            blocks.Add($"<section class=\"article-read-section\" id=\"{BuildAnchorId(section.Heading)}\"><h2>{System.Net.WebUtility.HtmlEncode(section.Heading)}</h2>{string.Join(string.Empty, section.Paragraphs.Select(RenderHtmlBlock))}</section>");
+
+            if (supportingImageIndex < imageBlocks.Count)
+            {
+                blocks.Add(imageBlocks[supportingImageIndex]);
+                supportingImageIndex++;
+            }
+        }
+
+        var conclusion = GetArticleParagraphs(payload, "conclusionParagraphs", "conclusion").ToList();
+        if (conclusion.Any())
+        {
+            blocks.Add($"<section class=\"article-read-section\" id=\"conclusion\"><h2>Conclusion</h2>{string.Join(string.Empty, conclusion.Select(RenderHtmlBlock))}</section>");
+        }
+
+        if (!string.IsNullOrWhiteSpace(GetJsonString(payload, "callToAction")))
+        {
+            blocks.Add($"<section class=\"article-read-section\" id=\"next-step\"><h2>Next step</h2>{RenderHtmlBlock(GetJsonString(payload, "callToAction"))}</section>");
+        }
+
+        return string.Join("\n", blocks);
+    }
+
+    private static string RenderHtmlBlock(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return string.Empty;
+        }
+
+        var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (lines.Length > 0 && lines.All(line => line.StartsWith("- ", StringComparison.Ordinal)))
+        {
+            return "<ul>" + string.Join(string.Empty, lines.Select(line => $"<li>{FormatInlineMarkup(line[2..])}</li>")) + "</ul>";
+        }
+
+        if (lines.Length > 0 && lines.All(line => System.Text.RegularExpressions.Regex.IsMatch(line, "^\\d+\\.\\s")))
+        {
+            return "<ol>" + string.Join(string.Empty, lines.Select(line => $"<li>{FormatInlineMarkup(System.Text.RegularExpressions.Regex.Replace(line, "^\\d+\\.\\s", string.Empty))}</li>")) + "</ol>";
+        }
+
+        return $"<p>{FormatInlineMarkup(text)}</p>";
+    }
+
+    private static string FormatInlineMarkup(string text)
+    {
+        var encoded = System.Net.WebUtility.HtmlEncode(text);
+        return System.Text.RegularExpressions.Regex.Replace(encoded, "\\*\\*(.+?)\\*\\*", "<strong>$1</strong>");
+    }
+
+    private static string BuildAnchorId(string heading)
+        => System.Text.RegularExpressions.Regex.Replace((heading ?? string.Empty).ToLowerInvariant(), "[^a-z0-9]+", "-").Trim('-');
+
+    private IEnumerable<string> GetGeneratedImageHtmlBlocks()
+    {
+        return (Artifacts ?? [])
+            .Where(x => x.ArtifactType is "FeaturedImageAsset" or "SupportingImageAsset")
+            .OrderBy(x => x.ArtifactType == "FeaturedImageAsset" ? 0 : 1)
+            .ThenBy(x => x.CreatedUtc)
+            .Select(x => ParseArtifactJson(x.ContentJson))
+            .Where(x => x is not null)
+            .Select(payload => new
+            {
+                ImagePath = GetJsonString(payload, "imagePath"),
+                AltText = GetJsonString(payload, "altText"),
+                Title = GetJsonString(payload, "title")
+            })
+            .Where(x => !string.IsNullOrWhiteSpace(x.ImagePath))
+            .Select(x => $"<figure class=\"article-inline-image\"><img src=\"{EscapeHtmlAttribute(x.ImagePath)}\" alt=\"{EscapeHtmlAttribute(x.AltText)}\" /><figcaption>{System.Net.WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(x.Title) ? x.AltText : x.Title)}</figcaption></figure>");
+    }
+
+    private static string BuildPlainTextFromHtml(string title, string summary, string html, string callToAction)
+    {
+        var plainBody = System.Text.RegularExpressions.Regex.Replace(html ?? string.Empty, "<[^>]+>", " ");
+        plainBody = System.Net.WebUtility.HtmlDecode(plainBody);
+        plainBody = System.Text.RegularExpressions.Regex.Replace(plainBody, @"\s+", " ").Trim();
+        return string.Join("\n\n", new[] { title, summary, plainBody, callToAction }.Where(x => !string.IsNullOrWhiteSpace(x)));
+    }
+
+    private static int CountWordsFromHtml(string html)
+    {
+        var plain = System.Text.RegularExpressions.Regex.Replace(html ?? string.Empty, "<[^>]+>", " ");
+        plain = System.Net.WebUtility.HtmlDecode(plain);
+        return plain.Split([' ', '\n', '\r', '\t'], StringSplitOptions.RemoveEmptyEntries).Length;
+    }
+
+    private static int CountLinksFromHtml(string html)
+        => string.IsNullOrWhiteSpace(html)
+            ? 0
+            : System.Text.RegularExpressions.Regex.Matches(html, "<a\\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Count;
+
+    private int CountChecklistCompleted()
+    {
+        if (EditorModel is null)
+        {
+            return 0;
+        }
+
+        var completed = 0;
+        if (!string.IsNullOrWhiteSpace(EditorModel.Title)) completed++;
+        if (!string.IsNullOrWhiteSpace(EditorModel.Slug)) completed++;
+        if (!string.IsNullOrWhiteSpace(EditorModel.MetaDescription)) completed++;
+        if (EditorWordCount >= SafeInt(EditorModel.TargetWordCountMin, 0)) completed++;
+        if (!string.IsNullOrWhiteSpace(EditorModel.PrimaryKeyword)) completed++;
+        return completed;
+    }
+
+    private int CalculateOptimizationScore()
+    {
+        if (EditorModel is null)
+        {
+            return 0;
+        }
+
+        var score = 0;
+        if (!string.IsNullOrWhiteSpace(EditorModel.Title)) score += 20;
+        if (!string.IsNullOrWhiteSpace(EditorModel.Slug)) score += 15;
+        if (!string.IsNullOrWhiteSpace(EditorModel.MetaDescription)) score += 15;
+        if (!string.IsNullOrWhiteSpace(EditorModel.PrimaryKeyword)) score += 15;
+        if (!string.IsNullOrWhiteSpace(EditorModel.KeywordStrengthLabel)) score += 10;
+
+        var targetMin = SafeInt(EditorModel.TargetWordCountMin, 0);
+        var targetMax = SafeInt(EditorModel.TargetWordCountMax, 0);
+        if (EditorWordCount >= targetMin && (targetMax == 0 || EditorWordCount <= targetMax + 300))
+        {
+            score += 15;
+        }
+        else if (EditorWordCount >= Math.Max(1, targetMin - 300))
+        {
+            score += 8;
+        }
+
+        if (ChecklistCompleted >= 4) score += 10;
+        return Math.Min(100, score);
+    }
+
+    private static int SafeInt(string value, int fallback)
+        => int.TryParse(value, out var parsed) ? parsed : fallback;
+
+    private static string FormatJsonBlock(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) || value == "{}"
+            ? "No output generated yet."
+            : value;
+    }
+
+    private int CountTasksByStatus(TaskStatusEnum status)
+        => Tasks?.Count(x => x.Status == status) ?? 0;
+
+    private static JsonElement? ParseArtifactJson(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.Clone();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static bool TryGetProperty(JsonElement payload, string propertyName, out JsonElement property)
+    {
+        if (payload.TryGetProperty(propertyName, out property))
+        {
+            return true;
+        }
+
+        foreach (var candidate in payload.EnumerateObject())
+        {
+            if (string.Equals(candidate.Name, propertyName, StringComparison.OrdinalIgnoreCase))
+            {
+                property = candidate.Value;
+                return true;
+            }
+        }
+
+        property = default;
+        return false;
+    }
+
+    private static string GetJsonString(JsonElement? payload, string propertyName)
+    {
+        if (payload is null || !TryGetProperty(payload.Value, propertyName, out var property))
+        {
+            return string.Empty;
+        }
+
+        return property.ValueKind switch
+        {
+            JsonValueKind.String => property.GetString() ?? string.Empty,
+            JsonValueKind.Number => property.ToString(),
+            JsonValueKind.True => "true",
+            JsonValueKind.False => "false",
+            _ => property.ToString()
+        };
+    }
+
+    private static int GetJsonInt(JsonElement? payload, string propertyName, int fallback)
+    {
+        if (payload is null || !TryGetProperty(payload.Value, propertyName, out var property))
+        {
+            return fallback;
+        }
+
+        return property.ValueKind == JsonValueKind.Number && property.TryGetInt32(out var value)
+            ? value
+            : int.TryParse(property.ToString(), out var parsed)
+                ? parsed
+                : fallback;
+    }
+
+    private static bool GetJsonBool(JsonElement? payload, string propertyName)
+    {
+        if (payload is null || !TryGetProperty(payload.Value, propertyName, out var property))
+        {
+            return false;
+        }
+
+        return property.ValueKind == JsonValueKind.True ||
+               (property.ValueKind == JsonValueKind.String && bool.TryParse(property.GetString(), out var result) && result);
+    }
+
+    private static IEnumerable<string> GetJsonArray(JsonElement? payload, string propertyName)
+    {
+        if (payload is null || !TryGetProperty(payload.Value, propertyName, out var property) || property.ValueKind != JsonValueKind.Array)
+        {
+            return Enumerable.Empty<string>();
+        }
+
+        return property.EnumerateArray().Select(item => item.ValueKind == JsonValueKind.String ? item.GetString() ?? string.Empty : item.ToString());
+    }
+
+    private static IEnumerable<string> GetArticleParagraphs(JsonElement? payload, string arrayPropertyName, string fallbackPropertyName)
+    {
+        if (payload is null)
+        {
+            return Enumerable.Empty<string>();
+        }
+
+        if (payload.Value.TryGetProperty(arrayPropertyName, out var arrayProperty) && arrayProperty.ValueKind == JsonValueKind.Array)
+        {
+            return arrayProperty
+                .EnumerateArray()
+                .Select(item => item.ValueKind == JsonValueKind.String ? item.GetString() ?? string.Empty : item.ToString())
+                .Where(item => !string.IsNullOrWhiteSpace(item));
+        }
+
+        var fallback = GetJsonString(payload, fallbackPropertyName);
+        return string.IsNullOrWhiteSpace(fallback)
+            ? Enumerable.Empty<string>()
+            : fallback.Split("\n\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    private static IEnumerable<(string Heading, IEnumerable<string> Paragraphs)> GetFinalArticleSections(JsonElement? payload)
+    {
+        if (payload is null)
+        {
+            return Enumerable.Empty<(string Heading, IEnumerable<string> Paragraphs)>();
+        }
+
+        if (payload.Value.TryGetProperty("sections", out var sectionsProperty) && sectionsProperty.ValueKind == JsonValueKind.Array)
+        {
+            return sectionsProperty.EnumerateArray()
+                .Select(section =>
+                {
+                    var heading = section.TryGetProperty("heading", out var headingProperty)
+                        ? headingProperty.GetString() ?? string.Empty
+                        : string.Empty;
+
+                    var paragraphs = section.TryGetProperty("paragraphs", out var paragraphsProperty) && paragraphsProperty.ValueKind == JsonValueKind.Array
+                        ? paragraphsProperty.EnumerateArray()
+                            .Select(item => item.ValueKind == JsonValueKind.String ? item.GetString() ?? string.Empty : item.ToString())
+                            .Where(item => !string.IsNullOrWhiteSpace(item))
+                        : Enumerable.Empty<string>();
+
+                    return (Heading: heading, Paragraphs: paragraphs);
+                })
+                .Where(section => !string.IsNullOrWhiteSpace(section.Heading) && section.Paragraphs.Any());
+        }
+
+        return new[]
+        {
+            (GetJsonString(payload, "sectionOneHeading"), GetArticleParagraphs(payload, "missing", "sectionOneBody")),
+            (GetJsonString(payload, "sectionTwoHeading"), GetArticleParagraphs(payload, "missing", "sectionTwoBody")),
+            (GetJsonString(payload, "sectionThreeHeading"), GetArticleParagraphs(payload, "missing", "sectionThreeBody")),
+            (GetJsonString(payload, "sectionFourHeading"), GetArticleParagraphs(payload, "missing", "sectionFourBody"))
+        }.Where(x => !string.IsNullOrWhiteSpace(x.Item1) && x.Item2.Any());
+    }
+
+    private async Task RetryTask(ContentWorkflowTask task)
+    {
+        try
+        {
+            var success = await Mediator.Send(new RerunWorkflowFromTaskCommand(JobId, task.DisplayOrder, "Eric"));
+            if (success)
+            {
+                await LoadJobData();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ContentOS] Retry failed: {ex.Message}");
+        }
+    }
+
+    private static string FormatLabel(string value)
+        => value.Replace("Article", string.Empty, StringComparison.Ordinal);
+
+    private static string TruncateText(string value, int maxLength)
+        => string.IsNullOrWhiteSpace(value) || value.Length <= maxLength
+            ? value
+            : value[..maxLength].TrimEnd() + "...";
+
+    private static string GetArtifactSummary(ContentArtifact artifact, JsonElement? payload)
+        => artifact.ArtifactType switch
+        {
+            "ContentBrief" => TruncateText(string.Join(" ", GetJsonArray(payload, "brief")), 200),
+            "ArticleOutline" => $"{GetJsonArray(payload, "sections").Count()} sections outlined.",
+            "DraftArticle" => $"Draft targeting {GetJsonString(payload, "estimatedWordCount")} words and {GetJsonString(payload, "estimatedReadTimeMinutes")} minute read time.",
+            "AiseoOptimizationReport" => TruncateText(string.Join(" ", GetJsonArray(payload, "notes")), 180),
+            "PublishPackage" => $"Publish package ready for {GetJsonString(payload, "title")}",
+            "FeaturedImageAsset" => $"{GetJsonString(payload, "imageRole")} image asset ready as {GetJsonString(payload, "status")}.",
+            "SupportingImageAsset" => $"{GetJsonString(payload, "imageRole")} image asset ready as {GetJsonString(payload, "status")}.",
+            "SerpBenchmark" => $"SERP benchmark from {GetJsonString(payload, "resultCount")} results, with word target {GetJsonString(payload, "recommendedWordCountMin")}-{GetJsonString(payload, "recommendedWordCountMax")}.",
+            _ => TruncateText(artifact.ContentText, 180)
+        };
+
+    private static IEnumerable<string> GetBenchmarkKeywordChips(JsonElement? payload)
+    {
+        if (payload is null || !payload.Value.TryGetProperty("relatedKeywords", out var related) || related.ValueKind != JsonValueKind.Array)
+        {
+            return Enumerable.Empty<string>();
+        }
+
+        return related.EnumerateArray()
+            .Take(8)
+            .Select(item =>
+            {
+                var keyword = item.TryGetProperty("keyword", out var keywordProperty) ? keywordProperty.GetString() ?? string.Empty : string.Empty;
+                var min = item.TryGetProperty("recommendedMin", out var minProperty) ? minProperty.ToString() : string.Empty;
+                var max = item.TryGetProperty("recommendedMax", out var maxProperty) ? maxProperty.ToString() : string.Empty;
+                return string.IsNullOrWhiteSpace(keyword) ? string.Empty : $"{keyword} ({min}-{max})";
+            })
+            .Where(x => !string.IsNullOrWhiteSpace(x));
+    }
+
+    private static IEnumerable<string> GetJsonStringArray(JsonElement? payload, params string[] propertyNames)
+    {
+        if (payload is null)
+        {
+            return Enumerable.Empty<string>();
+        }
+
+        foreach (var propertyName in propertyNames)
+        {
+            if (!TryGetProperty(payload.Value, propertyName, out var property) || property.ValueKind != JsonValueKind.Array)
+            {
+                continue;
+            }
+
+            return property.EnumerateArray()
+                .Select(item => item.ValueKind == JsonValueKind.String ? item.GetString() ?? string.Empty : item.ToString())
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .ToList();
+        }
+
+        return Enumerable.Empty<string>();
+    }
+
+    private int GetOptimizationReportInt(string propertyName, int fallback)
+    {
+        var payload = ParseArtifactJson(LatestOptimizationReport?.ContentJson);
+        if (payload is null || !TryGetProperty(payload.Value, propertyName, out var property))
+        {
+            return fallback;
+        }
+
+        return property.ValueKind == JsonValueKind.Number && property.TryGetInt32(out var value)
+            ? value
+            : int.TryParse(property.ToString(), out var parsed)
+                ? parsed
+                : fallback;
+    }
+
+    private string GetOptimizationReportString(string propertyName, string fallback)
+    {
+        var payload = ParseArtifactJson(LatestOptimizationReport?.ContentJson);
+        if (payload is null || !TryGetProperty(payload.Value, propertyName, out var property))
+        {
+            return fallback;
+        }
+
+        return property.ValueKind == JsonValueKind.String
+            ? property.GetString() ?? fallback
+            : property.ToString();
+    }
+
+    private bool GetOptimizationReportBool(string propertyName)
+    {
+        var payload = ParseArtifactJson(LatestOptimizationReport?.ContentJson);
+        if (payload is null || !TryGetProperty(payload.Value, propertyName, out var property))
+        {
+            return false;
+        }
+
+        return property.ValueKind == JsonValueKind.True ||
+               (property.ValueKind == JsonValueKind.String && bool.TryParse(property.GetString(), out var result) && result);
+    }
+
+    private IEnumerable<string> GetOptimizationReportStringArray(string propertyName)
+    {
+        var payload = ParseArtifactJson(LatestOptimizationReport?.ContentJson);
+        if (payload is null || !TryGetProperty(payload.Value, propertyName, out var property) || property.ValueKind != JsonValueKind.Array)
+        {
+            return Enumerable.Empty<string>();
+        }
+
+        return property.EnumerateArray()
+            .Select(item => item.ValueKind == JsonValueKind.String ? item.GetString() ?? string.Empty : item.ToString())
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Take(8)
+            .ToList();
+    }
+
+    private IEnumerable<KeywordChipViewModel> GetSidebarKeywordChips()
+    {
+        var articleText = GetKeywordTextSource();
+        var serpPayload = ParseArtifactJson(LatestSerpBenchmark?.ContentJson);
+        var optimizationPayload = ParseArtifactJson(LatestOptimizationReport?.ContentJson);
+
+        if (serpPayload is not null)
+        {
+            var chips = new List<KeywordChipViewModel>();
+            var primaryKeyword = GetJsonString(serpPayload, "query");
+            var primaryMin = GetJsonInt(serpPayload, "recommendedPrimaryKeywordMin", 1);
+            var primaryMax = GetJsonInt(serpPayload, "recommendedPrimaryKeywordMax", Math.Max(2, primaryMin + 1));
+
+            if (!string.IsNullOrWhiteSpace(primaryKeyword))
+            {
+                var actualPrimaryCount = CountPhraseOccurrences(articleText, primaryKeyword);
+                chips.Add(new KeywordChipViewModel
+                {
+                    Keyword = primaryKeyword,
+                    ActualCount = actualPrimaryCount,
+                    TargetMin = primaryMin,
+                    TargetMax = primaryMax,
+                    Score = ScoreRange(actualPrimaryCount, primaryMin, primaryMax)
+                });
+            }
+
+            foreach (var related in GetSerpRelatedKeywordTargets(serpPayload).Take(7))
+            {
+                var actualCount = CountPhraseOccurrences(articleText, related.Keyword);
+                chips.Add(new KeywordChipViewModel
+                {
+                    Keyword = related.Keyword,
+                    ActualCount = actualCount,
+                    TargetMin = related.TargetMin,
+                    TargetMax = related.TargetMax,
+                    Score = ScoreRange(actualCount, related.TargetMin, related.TargetMax)
+                });
+            }
+
+            if (chips.Count > 0)
+            {
+                return chips;
+            }
+        }
+
+        if (optimizationPayload is null)
+        {
+            var seoPayload = ParseArtifactJson(LatestSeoOptimization?.ContentJson);
+            var keywordPayload = ParseArtifactJson(LatestKeywordStrategy?.ContentJson);
+            var fallbackKeywords = new List<string>();
+
+            if (seoPayload is not null)
+            {
+                fallbackKeywords.AddRange(GetJsonStringArray(seoPayload, "KeywordCluster", "keywordCluster"));
+            }
+
+            if (keywordPayload is not null)
+            {
+                fallbackKeywords.AddRange(GetJsonStringArray(keywordPayload, "KeywordVariations", "keywordVariations"));
+            }
+
+            return fallbackKeywords
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(8)
+                .Select(keyword =>
+                {
+                    var actualCount = CountPhraseOccurrences(articleText, keyword);
+                    return new KeywordChipViewModel
+                    {
+                        Keyword = keyword,
+                        ActualCount = actualCount,
+                        TargetMin = 1,
+                        TargetMax = 2,
+                        Score = ScoreRange(actualCount, 1, 2)
+                    };
+                })
+                .ToList();
+        }
+
+        IEnumerable<KeywordChipViewModel> ReadChipArray(params string[] propertyNames)
+        {
+            foreach (var propertyName in propertyNames)
+            {
+                if (!TryGetProperty(payload: optimizationPayload.Value, propertyName, out var property) || property.ValueKind != JsonValueKind.Array)
+                {
+                    continue;
+                }
+
+                return property.EnumerateArray().Select(item => new KeywordChipViewModel
+                {
+                    Keyword = GetJsonString(item, "keyword"),
+                    ActualCount = GetJsonInt(item, "actualCount", 0),
+                    TargetMin = GetJsonInt(item, "targetMin", 0),
+                    TargetMax = GetJsonInt(item, "targetMax", 0),
+                    Score = GetJsonInt(item, "score", 0)
+                }).Where(x => !string.IsNullOrWhiteSpace(x.Keyword));
+            }
+
+            return Enumerable.Empty<KeywordChipViewModel>();
+        }
+
+        return ReadChipArray("PrimaryKeywordChips", "primaryKeywordChips")
+            .Concat(ReadChipArray("RelatedKeywordChips", "relatedKeywordChips"))
+            .Take(8)
+            .ToList();
+    }
+
+    private string GetKeywordTextSource()
+    {
+        if (!string.IsNullOrWhiteSpace(EditorModel?.BodyHtml))
+        {
+            return HtmlToPlainText(EditorModel.BodyHtml);
+        }
+
+        var payload = ParseArtifactJson(FinalArticlePreview?.ContentJson);
+        if (payload is not null)
+        {
+            var htmlBody = GetJsonString(payload, "htmlBody");
+            if (!string.IsNullOrWhiteSpace(htmlBody))
+            {
+                return HtmlToPlainText(htmlBody);
+            }
+
+            return HtmlToPlainText(BuildHtmlBody(payload));
+        }
+
+        var draftPayload = ParseArtifactJson(LatestDraftArticle?.ContentJson);
+        if (draftPayload is not null)
+        {
+            var parts = new List<string>();
+            parts.AddRange(GetJsonStringArray(draftPayload, "IntroParagraphs", "introParagraphs"));
+
+            if (TryGetProperty(draftPayload.Value, "Sections", out var draftSections) || TryGetProperty(draftPayload.Value, "sections", out draftSections))
+            {
+                if (draftSections.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var section in draftSections.EnumerateArray())
+                    {
+                        var heading = GetJsonString(section, "Heading");
+                        if (string.IsNullOrWhiteSpace(heading))
+                        {
+                            heading = GetJsonString(section, "heading");
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(heading))
+                        {
+                            parts.Add(heading);
+                        }
+
+                        parts.AddRange(GetJsonStringArray(section, "Paragraphs", "paragraphs"));
+                    }
+                }
+            }
+
+            parts.AddRange(GetJsonStringArray(draftPayload, "ConclusionParagraphs", "conclusionParagraphs"));
+            var cta = GetJsonString(draftPayload, "CallToAction");
+            if (string.IsNullOrWhiteSpace(cta))
+            {
+                cta = GetJsonString(draftPayload, "callToAction");
+            }
+
+            if (!string.IsNullOrWhiteSpace(cta))
+            {
+                parts.Add(cta);
+            }
+
+            return string.Join(" ", parts.Where(x => !string.IsNullOrWhiteSpace(x)));
+        }
+
+        return string.Empty;
+    }
+
+    private IEnumerable<KeywordChipViewModel> GetSerpRelatedKeywordTargets(JsonElement? payload)
+    {
+        if (payload is null)
+        {
+            return Enumerable.Empty<KeywordChipViewModel>();
+        }
+
+        if (TryGetProperty(payload.Value, "relatedKeywords", out var relatedKeywords) && relatedKeywords.ValueKind == JsonValueKind.Array)
+        {
+            var explicitKeywords = relatedKeywords.EnumerateArray()
+                .Select(item => new KeywordChipViewModel
+                {
+                    Keyword = GetJsonString(item, "keyword"),
+                    TargetMin = GetJsonInt(item, "recommendedMin", 1),
+                    TargetMax = GetJsonInt(item, "recommendedMax", 2)
+                })
+                .Where(x => !string.IsNullOrWhiteSpace(x.Keyword))
+                .ToList();
+
+            if (explicitKeywords.Count > 0)
+            {
+                return explicitKeywords;
+            }
+        }
+
+        if (!TryGetProperty(payload.Value, "results", out var results) || results.ValueKind != JsonValueKind.Array)
+        {
+            return Enumerable.Empty<KeywordChipViewModel>();
+        }
+
+        var primaryTerms = (GetJsonString(payload, "query") ?? string.Empty)
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(x => x.ToLowerInvariant())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var stopWords = new HashSet<string>(new[]
+        {
+            "what", "with", "from", "that", "this", "into", "your", "about", "guide", "complete", "blog", "learn", "work", "works", "using", "zero", "based", "budgeting"
+        }, StringComparer.OrdinalIgnoreCase);
+
+        var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in results.EnumerateArray())
+        {
+            var title = GetJsonString(item, "title");
+            foreach (var token in System.Text.RegularExpressions.Regex.Matches(title.ToLowerInvariant(), "[a-z]{4,}")
+                         .Select(x => x.Value)
+                         .Where(x => !stopWords.Contains(x) && !primaryTerms.Contains(x)))
+            {
+                counts[token] = counts.TryGetValue(token, out var value) ? value + 1 : 1;
+            }
+        }
+
+        return counts
+            .OrderByDescending(x => x.Value)
+            .ThenBy(x => x.Key)
+            .Take(7)
+            .Select(x => new KeywordChipViewModel
+            {
+                Keyword = x.Key,
+                TargetMin = 1,
+                TargetMax = Math.Max(2, x.Value),
+                Score = 0
+            })
+            .ToList();
+    }
+
+    private static string HtmlToPlainText(string html)
+    {
+        var plain = System.Text.RegularExpressions.Regex.Replace(html ?? string.Empty, "<[^>]+>", " ");
+        plain = System.Net.WebUtility.HtmlDecode(plain);
+        return System.Text.RegularExpressions.Regex.Replace(plain, @"\s+", " ").Trim();
+    }
+
+    private static int CountPhraseOccurrences(string content, string phrase)
+    {
+        if (string.IsNullOrWhiteSpace(content) || string.IsNullOrWhiteSpace(phrase))
+        {
+            return 0;
+        }
+
+        return System.Text.RegularExpressions.Regex.Matches(content, $@"(?i)\b{System.Text.RegularExpressions.Regex.Escape(phrase)}\b").Count;
+    }
+
+    private static int ScoreRange(int actual, int min, int max)
+    {
+        if (min <= 0 && max <= 0) return 0;
+        if (actual >= min && actual <= max) return 100;
+        if (actual < min) return (int)Math.Max(0, Math.Min(100, Math.Round((decimal)actual / Math.Max(1, min) * 100m)));
+        var overflow = actual - max;
+        var penalty = Math.Min(100m, ((decimal)overflow / Math.Max(1, max)) * 100m);
+        return (int)Math.Max(0, Math.Round(100m - penalty));
+    }
+
+    private static string MapKeywordChipClass(int score)
+        => score >= 90 ? "keyword-chip-strong"
+            : score >= 70 ? "keyword-chip-medium"
+            : "keyword-chip-weak";
+
+    private static string MapKeywordStrengthClass(string value)
+        => value switch
+        {
+            "Very Strong" => "keyword-strength-strong",
+            "Strong" => "keyword-strength-strong",
+            "Moderate" => "keyword-strength-moderate",
+            "Weak" => "keyword-strength-weak",
+            "Very Weak" => "keyword-strength-weak",
+            _ => string.Empty
+        };
+
+    private static string MapJobStatusClass(string status)
+        => status == "Completed" ? "status-approved"
+         : status == "InProgress" ? "status-ready"
+         : status == "Blocked" || status == "Failed" ? "status-danger"
+         : "status-pending";
+
+    private static string MapTaskStatusClass(TaskStatusEnum status)
+        => status == TaskStatusEnum.Completed ? "status-approved"
+         : status == TaskStatusEnum.Ready || status == TaskStatusEnum.InProgress ? "status-ready"
+         : status == TaskStatusEnum.Blocked || status == TaskStatusEnum.Failed ? "status-danger"
+         : "status-pending";
+
+    sealed class FinalArticleEditorModel
+    {
+        public Guid ArtifactId { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Slug { get; set; } = string.Empty;
+        public string Summary { get; set; } = string.Empty;
+        public string MetaDescription { get; set; } = string.Empty;
+        public string PrimaryKeyword { get; set; } = string.Empty;
+        public string KeywordStrengthLabel { get; set; } = string.Empty;
+        public string KeywordStrengthScore { get; set; } = string.Empty;
+        public string KeywordStrengthReason { get; set; } = string.Empty;
+        public string ContentType { get; set; } = string.Empty;
+        public string TargetWordCountMin { get; set; } = string.Empty;
+        public string TargetWordCountMax { get; set; } = string.Empty;
+        public string EstimatedWordCount { get; set; } = string.Empty;
+        public string EstimatedReadTimeMinutes { get; set; } = string.Empty;
+        public string CallToAction { get; set; } = string.Empty;
+        public string BodyHtml { get; set; } = string.Empty;
+        public string EditorJson { get; set; } = string.Empty;
+    }
+
+    sealed class FinalArticleArtifactPayload
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Slug { get; set; } = string.Empty;
+        public string PrimaryKeyword { get; set; } = string.Empty;
+        public string KeywordStrengthLabel { get; set; } = string.Empty;
+        public string KeywordStrengthScore { get; set; } = string.Empty;
+        public string KeywordStrengthReason { get; set; } = string.Empty;
+        public string ContentType { get; set; } = string.Empty;
+        public string Summary { get; set; } = string.Empty;
+        public string MetaDescription { get; set; } = string.Empty;
+        public string TargetWordCountMin { get; set; } = string.Empty;
+        public string TargetWordCountMax { get; set; } = string.Empty;
+        public string EstimatedWordCount { get; set; } = string.Empty;
+        public string EstimatedReadTimeMinutes { get; set; } = string.Empty;
+        public string CallToAction { get; set; } = string.Empty;
+        public string HtmlBody { get; set; } = string.Empty;
+        public string EditorJson { get; set; } = string.Empty;
+        public bool ManuallyEdited { get; set; }
+    }
+
+    sealed class KeywordChipViewModel
+    {
+        public string Keyword { get; set; } = string.Empty;
+        public int ActualCount { get; set; }
+        public int TargetMin { get; set; }
+        public int TargetMax { get; set; }
+        public int Score { get; set; }
+    }
+}
+

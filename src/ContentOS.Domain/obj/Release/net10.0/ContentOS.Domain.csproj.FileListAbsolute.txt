@@ -1,0 +1,11 @@
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Domain/bin/Release/net10.0/ContentOS.Domain.deps.json
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Domain/bin/Release/net10.0/ContentOS.Domain.dll
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Domain/bin/Release/net10.0/ContentOS.Domain.pdb
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Domain/obj/Release/net10.0/ContentOS.Domain.GeneratedMSBuildEditorConfig.editorconfig
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Domain/obj/Release/net10.0/ContentOS.Domain.AssemblyInfoInputs.cache
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Domain/obj/Release/net10.0/ContentOS.Domain.AssemblyInfo.cs
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Domain/obj/Release/net10.0/ContentOS.Domain.csproj.CoreCompileInputs.cache
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Domain/obj/Release/net10.0/ContentOS.Domain.dll
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Domain/obj/Release/net10.0/refint/ContentOS.Domain.dll
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Domain/obj/Release/net10.0/ContentOS.Domain.pdb
+/home/jarvis_bot/.openclaw/workspace/ContentOS/src/ContentOS.Domain/obj/Release/net10.0/ref/ContentOS.Domain.dll

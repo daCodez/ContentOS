@@ -1,0 +1,164 @@
+@page "/research-inbox"
+
+@using ContentOS.Application.Commands
+@using ContentOS.Application.DTOs
+@using ContentOS.Application.Queries
+@using MediatR
+@inject IMediator Mediator
+@inject NavigationManager Navigation
+
+<PageTitle>Research Inbox | ContentOS</PageTitle>
+
+<div class="mission-control-container kingadmin-dashboard">
+    <div class="crumb-row">
+        <span>Home</span>
+        <span class="crumb-sep">›</span>
+        <span>Research Inbox</span>
+    </div>
+
+    <div class="page-header-row">
+        <div>
+            <h1 class="page-title">IDEA INBOX</h1>
+            <p class="page-subtitle">Review scored ideas, approve the winners, and launch article workflows.</p>
+        </div>
+    </div>
+
+    <section class="dashboard-card compact-card">
+        <div class="mini-metrics inbox-mini-metrics" style="margin-bottom:1rem;">
+            <div class="mini-metric">
+                <span class="mini-label">Total Ideas</span>
+                <strong>@Ideas.Count</strong>
+            </div>
+            <div class="mini-metric">
+                <span class="mini-label">Pending</span>
+                <strong>@Ideas.Count(i => i.Status == "Pending")</strong>
+            </div>
+            <div class="mini-metric">
+                <span class="mini-label">Approved</span>
+                <strong>@Ideas.Count(i => i.Status == "Approved")</strong>
+            </div>
+            <div class="mini-metric">
+                <span class="mini-label">Rejected</span>
+                <strong>@Ideas.Count(i => i.Status == "Rejected")</strong>
+            </div>
+        </div>
+
+        <div class="widget-title">Idea Queue</div>
+        <table class="architect-table compact-table">
+            <thead>
+                <tr>
+                    <th>Idea</th>
+                    <th>Problem</th>
+                    <th>Audience</th>
+                    <th>Score</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Ideas.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-center">No idea records yet.</td></tr>
+                }
+                else
+                {
+                    @foreach (var idea in Ideas)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@idea.IdeaTitle</strong>
+                                <div class="row-meta">@idea.SearchIntent • @idea.UniquenessAngle</div>
+                            </td>
+                            <td>@idea.ReaderProblem</td>
+                            <td>@idea.AudienceType</td>
+                            <td>@idea.PriorityScore.ToString("0.00")</td>
+                            <td>
+                                <span class="status-badge @(idea.Status == "Approved" ? "status-approved" : idea.Status == "Rejected" ? "status-danger" : "status-pending")">
+                                    @idea.Status
+                                </span>
+                            </td>
+                            <td class="action-cell">
+                                @if (idea.Status == "Pending")
+                                {
+                                    <button class="btn-primary" @onclick="() => ApproveAsync(idea.Id)" disabled="@(ApprovingId == idea.Id)">
+                                        @(ApprovingId == idea.Id ? "Approving…" : "Approve")
+                                    </button>
+                                    <button class="btn-secondary" @onclick="() => RejectAsync(idea.Id)">Reject</button>
+                                }
+                                else if (idea.Status == "Approved")
+                                {
+                                    @if (idea.ArticleWorkflowRunId.HasValue)
+                                    {
+                                        <a class="btn-primary" href="@($"/article-run/{idea.ArticleWorkflowRunId.Value}")">Open Article Run</a>
+                                    }
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </section>
+
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="workflow-task-error-banner">@ErrorMessage</div>
+    }
+</div>
+
+@code {
+    private List<IdeaRecordDto> Ideas { get; set; } = new();
+    private Guid? ApprovingId;
+    private string? ErrorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        ErrorMessage = null;
+        try
+        {
+            Ideas = (await Mediator.Send(new GetIdeaQueueQuery())).ToList();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to load ideas: {ex.Message}";
+        }
+    }
+
+    private async Task ApproveAsync(Guid id)
+    {
+        ApprovingId = id;
+        ErrorMessage = null;
+        try
+        {
+            var runId = await Mediator.Send(new ApproveIdeaRecordCommand(id, "Eric"));
+            Navigation.NavigateTo($"/article-run/{runId}", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Approval failed: {ex.Message}";
+        }
+        finally
+        {
+            ApprovingId = null;
+        }
+    }
+
+    private async Task RejectAsync(Guid id)
+    {
+        ErrorMessage = null;
+        try
+        {
+            await Mediator.Send(new RejectIdeaRecordCommand(id, "Eric"));
+            await RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Rejection failed: {ex.Message}";
+        }
+    }
+}

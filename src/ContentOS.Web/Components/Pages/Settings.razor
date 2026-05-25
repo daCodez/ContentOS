@@ -1,0 +1,266 @@
+@page "/settings"
+
+@using ContentOS.Application.Commands
+@using ContentOS.Application.Queries
+@using ContentOS.Domain.Entities
+@using MediatR
+@inject IMediator Mediator
+
+<PageTitle>Settings | ContentOS</PageTitle>
+
+<div class="mission-control-container kingadmin-dashboard">
+    <div class="crumb-row">
+        <span>Home</span>
+        <span class="crumb-sep">›</span>
+        <span>Settings</span>
+    </div>
+
+    <div class="page-header-row">
+        <div>
+            <h1 class="page-title">SETTINGS</h1>
+            <p class="page-subtitle">Configure your site and content preferences.</p>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <div class="workflow-task-error-banner">@Error</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(SuccessMessage))
+    {
+        <div class="status-badge status-approved" style="margin-bottom:1rem; display:inline-flex;">@SuccessMessage</div>
+    }
+
+    <section class="dashboard-card compact-card">
+        <div class="widget-title">Sites</div>
+
+        @if (IsLoading)
+        {
+            <p style="padding:1rem;">Loading...</p>
+        }
+        else if (Sites.Count == 0 && !IsEditing)
+        {
+            <p style="padding:1rem;">No sites configured. <button class="btn-primary" @onclick="StartCreate">Add Site</button></p>
+        }
+        else
+        {
+            <table class="architect-table compact-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Domain</th>
+                        <th>Niche</th>
+                        <th>Tone</th>
+                        <th>Platform</th>
+                        <th>Active</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var site in Sites)
+                    {
+                        <tr>
+                            <td><strong>@site.Name</strong></td>
+                            <td>@site.Domain</td>
+                            <td>@site.Niche</td>
+                            <td>@site.DefaultTone</td>
+                            <td>@site.PlatformType</td>
+                            <td>@(site.IsActive ? "Yes" : "No")</td>
+                            <td class="action-cell">
+                                <button class="btn-secondary" @onclick="() => StartEdit(site)">Edit</button>
+                                <button class="btn-secondary" style="color:var(--danger, #e53e3e);" @onclick="() => DeleteSiteAsync(site.Id)">Delete</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <div style="margin-top:0.75rem;">
+                <button class="btn-primary" @onclick="StartCreate">Add Site</button>
+            </div>
+        }
+    </section>
+
+    @if (IsEditing)
+    {
+        <section class="dashboard-card compact-card" style="margin-top:1rem;">
+            <div class="widget-title">@(IsNew ? "Add Site" : "Edit Site")</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; max-width:800px;">
+                <label class="editor-field">
+                    <span class="label">Site Name</span>
+                    <input @bind="EditName" placeholder="My Website" />
+                </label>
+                <label class="editor-field">
+                    <span class="label">Domain</span>
+                    <input @bind="EditDomain" placeholder="mysite.com" />
+                </label>
+                <label class="editor-field">
+                    <span class="label">Niche / Topic</span>
+                    <input @bind="EditNiche" placeholder="e.g. personal finance, travel, fitness" />
+                </label>
+                <label class="editor-field">
+                    <span class="label">Default Tone</span>
+                    <select @bind="EditTone">
+                        <option value="">-- Select Tone --</option>
+                        <option value="Practical and encouraging">Practical and encouraging</option>
+                        <option value="Clear and analytical">Clear and analytical</option>
+                        <option value="Conversational and friendly">Conversational and friendly</option>
+                        <option value="Authoritative and expert">Authoritative and expert</option>
+                        <option value="Casual and witty">Casual and witty</option>
+                        <option value="Inspirational and motivational">Inspirational and motivational</option>
+                        <option value="Direct and no-nonsense">Direct and no-nonsense</option>
+                        <option value="Empathetic and supportive">Empathetic and supportive</option>
+                        <option value="Professional and polished">Professional and polished</option>
+                        <option value="Story-driven and narrative">Story-driven and narrative</option>
+                    </select>
+                </label>
+                <label class="editor-field">
+                    <span class="label">Platform</span>
+                    <select @bind="EditPlatform">
+                        <option value="WordPress">WordPress</option>
+                        <option value="Ghost">Ghost</option>
+                        <option value="Static">Static</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </label>
+                <label class="editor-field">
+                    <span class="label">Active</span>
+                    <select @bind="EditIsActive">
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                    </select>
+                </label>
+            </div>
+            <div style="margin-top:1.5rem; display:flex; gap:0.5rem;">
+                <button class="btn-primary" @onclick="SaveAsync" disabled="@IsSaving">@(IsSaving ? "Saving..." : "Save")</button>
+                <button class="btn-secondary" @onclick="CancelEdit">Cancel</button>
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    private List<Site> Sites { get; set; } = new();
+    private bool IsLoading = true;
+    private bool IsEditing;
+    private bool IsNew;
+    private bool IsSaving;
+    private string Error = string.Empty;
+    private string SuccessMessage = string.Empty;
+
+    private Guid EditId;
+    private string EditName = string.Empty;
+    private string EditDomain = string.Empty;
+    private string EditNiche = string.Empty;
+    private string EditTone = string.Empty;
+    private string EditPlatform = "WordPress";
+    private string EditIsActive = "true";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSitesAsync();
+    }
+
+    private async Task LoadSitesAsync()
+    {
+        IsLoading = true;
+        try
+        {
+            var result = await Mediator.Send(new GetSitesQuery());
+            Sites = result?.ToList() ?? new();
+        }
+        catch (Exception ex)
+        {
+            Error = $"Failed to load sites: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void StartCreate()
+    {
+        EditId = Guid.NewGuid();
+        EditName = string.Empty;
+        EditDomain = string.Empty;
+        EditNiche = string.Empty;
+        EditTone = string.Empty;
+        EditPlatform = "WordPress";
+        EditIsActive = "true";
+        IsNew = true;
+        IsEditing = true;
+        Error = string.Empty;
+        SuccessMessage = string.Empty;
+    }
+
+    private void StartEdit(Site site)
+    {
+        EditId = site.Id;
+        EditName = site.Name;
+        EditDomain = site.Domain;
+        EditNiche = site.Niche;
+        EditTone = site.DefaultTone;
+        EditPlatform = site.PlatformType;
+        EditIsActive = site.IsActive ? "true" : "false";
+        IsNew = false;
+        IsEditing = true;
+        Error = string.Empty;
+        SuccessMessage = string.Empty;
+    }
+
+    private void CancelEdit()
+    {
+        IsEditing = false;
+        Error = string.Empty;
+    }
+
+    private async Task SaveAsync()
+    {
+        IsSaving = true;
+        Error = string.Empty;
+        SuccessMessage = string.Empty;
+        try
+        {
+            if (IsNew)
+            {
+                await Mediator.Send(new CreateSiteCommand
+                {
+                    Name = EditName,
+                    Domain = EditDomain,
+                    Niche = EditNiche,
+                    DefaultTone = EditTone,
+                    PlatformType = EditPlatform
+                });
+            }
+            else
+            {
+                await Mediator.Send(new UpdateSiteCommand(EditId, EditName, EditDomain, EditNiche, EditTone, EditPlatform, EditIsActive == "true"));
+            }
+            SuccessMessage = "Site saved.";
+            IsEditing = false;
+            await LoadSitesAsync();
+        }
+        catch (Exception ex)
+        {
+            Error = $"Save failed: {ex.Message}";
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    private async Task DeleteSiteAsync(Guid id)
+    {
+        try
+        {
+            await Mediator.Send(new DeleteSiteCommand(id));
+            SuccessMessage = "Site deleted.";
+            await LoadSitesAsync();
+        }
+        catch (Exception ex)
+        {
+            Error = $"Delete failed: {ex.Message}";
+        }
+    }
+}

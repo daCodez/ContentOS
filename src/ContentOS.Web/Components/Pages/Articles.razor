@@ -1,0 +1,122 @@
+@page "/articles"
+
+@using MediatR
+@using ContentOS.Application.DTOs
+@using ContentOS.Application.Queries
+@using ContentOS.Domain.Entities
+@inject IMediator Mediator
+@inject NavigationManager Nav
+
+<PageTitle>Articles | ContentOS</PageTitle>
+
+<div class="mission-control-container kingadmin-dashboard">
+    <div class="crumb-row">
+        <span>Home</span>
+        <span class="crumb-sep">›</span>
+        <span>Articles</span>
+    </div>
+
+    <div class="page-header-row">
+        <div>
+            <h1 class="page-title">ARTICLES</h1>
+            <p class="page-subtitle">published and draft articles from completed workflows.</p>
+        </div>
+        <div class="actions-group">
+            <button class="btn-primary" @onclick="CreateNewArticle">+ New Article</button>
+        </div>
+    </div>
+
+    <section class="dashboard-card compact-card">
+        <div class="widget-title">Completed Articles (@CompletedArticles.Count)</div>
+
+        @if (CompletedArticles.Count == 0)
+        {
+            <div class="empty-card">No completed articles yet. Run a workflow to generate one.</div>
+        }
+        else
+        {
+            <table class="architect-table compact-table">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Site</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Updated</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var article in CompletedArticles)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@article.Title</strong>
+                                <div style="font-size:0.75rem;color:#94a3b8;margin-top:0.25rem;">@article.WorkflowJobId</div>
+                            </td>
+                            <td>@article.SiteName</td>
+                            <td>@article.ContentType</td>
+                            <td><span class="status-badge @(MapStatusClass(article.Status))">@article.Status</span></td>
+                            <td>@article.LastUpdatedUtc.ToString("MMM dd, yyyy")</td>
+                            <td class="action-cell">
+                                <a class="btn-link" href="@($"/article-review/{article.WorkflowJobId}")">Review</a>
+                                <a class="btn-link" href="@($"/workflow-job/{article.WorkflowJobId}")">Workflow</a>
+                                <button class="btn-link btn-link-danger" @onclick="() => DeleteArticle(article.WorkflowJobId)">Delete</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+</div>
+
+@code {
+    private List<ArticleListItem> CompletedArticles { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var jobs = await Mediator.Send(new GetWorkflowJobListQuery());
+
+        CompletedArticles = jobs
+            .Where(j => j.Status == "Completed" || j.Status == "Failed")
+            .Select(j => new ArticleListItem
+            {
+                WorkflowJobId = j.WorkflowJobId,
+                Title = j.Title,
+                SiteName = j.SiteName,
+                ContentType = j.ContentType,
+                Status = j.Status,
+                LastUpdatedUtc = j.LastUpdatedUtc
+            })
+            .OrderByDescending(j => j.LastUpdatedUtc)
+            .ToList();
+    }
+
+    private void CreateNewArticle()
+    {
+        Nav.NavigateTo("/research-inbox");
+    }
+
+    private async Task DeleteArticle(Guid workflowJobId)
+    {
+        // TODO: Implement delete via MediatR command
+    }
+
+    private string MapStatusClass(string status) => status switch
+    {
+        "Completed" => "status-approved",
+        "Failed" => "status-rejected",
+        _ => "status-pending"
+    };
+
+    private class ArticleListItem
+    {
+        public Guid WorkflowJobId { get; set; }
+        public string Title { get; set; } = "";
+        public string SiteName { get; set; } = "";
+        public string ContentType { get; set; } = "";
+        public string Status { get; set; } = "";
+        public DateTime LastUpdatedUtc { get; set; }
+    }
+}

@@ -1,0 +1,202 @@
+[
+  {
+    "seed": "NerdWallet | Zero-Based Budgeting: What It Is and How to Use It",
+    "publisher": "NerdWallet",
+    "requestedTitle": "Zero-Based Budgeting: What It Is and How to Use It",
+    "resolvedTitle": "Zero-Based Budgeting: What It Is And How It Works - NerdWallet",
+    "url": "https://www.nerdwallet.com/finance/learn/zero-based-budgeting-explained",
+    "path": "/home/jarvis_bot/.openclaw/workspace/ContentOS/editorial/exemplars/01-zero-based-budgeting-what-it-is-and-how-it-works-nerdwallet.md",
+    "status": "ok",
+    "error": ""
+  },
+  {
+    "seed": "Ramsey Solutions | Zero-Based Budgeting Explained",
+    "publisher": "Ramsey Solutions",
+    "requestedTitle": "Zero-Based Budgeting Explained",
+    "resolvedTitle": "https://help.ramseysolutions.com/hc/en-us/articles/360047082171-What-is-a-Zero-Based-Budget",
+    "url": "https://help.ramseysolutions.com/hc/en-us/articles/360047082171-What-is-a-Zero-Based-Budget",
+    "path": "/home/jarvis_bot/.openclaw/workspace/ContentOS/editorial/exemplars/02-https-help-ramseysolutions-com-hc-en-us-articles-360047082171-what-is-a-zero-bas.md",
+    "status": "failed",
+    "error": "HTTP 403 or empty extract"
+  },
+  {
+    "seed": "The Balance | How Zero-Based Budgeting Works",
+    "publisher": "The Balance",
+    "requestedTitle": "How Zero-Based Budgeting Works",
+    "resolvedTitle": "https://www.fidelity.com/learning-center/smart-money/zero-based-budgeting",
+    "url": "https://www.fidelity.com/learning-center/smart-money/zero-based-budgeting",
+    "path": "/home/jarvis_bot/.openclaw/workspace/ContentOS/editorial/exemplars/03-https-www-fidelity-com-learning-center-smart-money-zero-based-budgeting.md",
+    "status": "failed",
+    "error": "HTTP 403 or empty extract"
+  },
+  {
+    "seed": "YNAB | What Is Zero-Based Budgeting?",
+    "publisher": "YNAB",
+    "requestedTitle": "What Is Zero-Based Budgeting?",
+    "resolvedTitle": "https://www.reddit.com/r/ynab/comments/13vi8q8/confused_how_ynabzero_based_budgeting_differs/",
+    "url": "https://www.reddit.com/r/ynab/comments/13vi8q8/confused_how_ynabzero_based_budgeting_differs/",
+    "path": "/home/jarvis_bot/.openclaw/workspace/ContentOS/editorial/exemplars/04-https-www-reddit-com-r-ynab-comments-13vi8q8-confused-how-ynabzero-based-budgeti.md",
+    "status": "failed",
+    "error": "HTTP 403 or empty extract"
+  },
+  {
+    "seed": "Clever Girl Finance | Zero-Based Budgeting for Beginners",
+    "publisher": "Clever Girl Finance",
+    "requestedTitle": "Zero-Based Budgeting for Beginners",
+    "resolvedTitle": "Zero Based Budgeting 101 + The Best Zero Based Budget Templates",
+    "url": "https://www.clevergirlfinance.com/zero-based-budget/",
+    "path": "/home/jarvis_bot/.openclaw/workspace/ContentOS/editorial/exemplars/05-zero-based-budgeting-101-the-best-zero-based-budget-templates.md",
+    "status": "ok",
+    "error": ""
+  },
+  {
+    "seed": "NerdWallet | How to Build an Emergency Fund",
+    "publisher": "NerdWallet",
+    "requestedTitle": "How to Build an Emergency Fund",
+    "resolvedTitle": "https://www.nerdwallet.com/banking/learn/emergency-fund-calculator",
+    "url": "https://www.nerdwallet.com/banking/learn/emergency-fund-calculator",
+    "path": "/home/jarvis_bot/.openclaw/workspace/ContentOS/editorial/exemplars/06-https-www-nerdwallet-com-banking-learn-emergency-fund-calculator.md",
+    "status": "failed",
+    "error": "HTTP 403 or empty extract"
+  },
+  {
+    "seed": "Ramsey Solutions | How to Start an Emergency Fund",
+    "publisher": "Ramsey Solutions",
+    "requestedTitle": "How to Start an Emergency Fund",
+    "resolvedTitle": "Emergency Fund: Why You Need One and How Much to Save - Ramsey",
+    "url": "https://www.ramseysolutions.com/saving/quick-guide-to-your-emergency-fund?srsltid=AfmBOopf8f7mo0PzBEXtAzzcp-a_GPgSuZDs1EeG-Y1_stj3RtLD2ft9",
+    "path": "/home/jarvis_bot/.openclaw/workspace/ContentOS/editorial/exemplars/07-emergency-fund-why-you-need-one-and-how-much-to-save-ramsey.md",
+    "status": "ok",
+    "error": ""
+  },
+  {
+    "seed": "The Balance | Emergency Fund: What It Is and How to Build One",
+    "publisher": "The Balance",
+    "requestedTitle": "Emergency Fund: What It Is and How to Build One",
+    "resolvedTitle": "An essential guide to building an emergency fund | Consumer Financial Protection Bureau",
+    "url": "https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/",
+    "path": "/home/jarvis_bot/.openclaw/workspace/ContentOS/editorial/exemplars/08-an-essential-guide-to-building-an-emergency-fund-consumer-financial-protection-b.md",
+    "status": "ok",
+    "error": ""
+  },
+  {
+    "seed": "Clever Girl Finance | How to Save $500 Fast",
+    "publisher": "Clever Girl Finance",
+    "requestedTitle": "How to Save $500 Fast",
+    "resolvedTitle": "How To Do A 6 Month Savings Challenge To Save Money Fast! | Clever Girl Finance",
+    "url": "https://www.clevergirlfinance.com/6-month-saving-challenge/",
+    "path": "/home/jarvis_bot/.openclaw/workspace/ContentOS/editorial/exemplars/09-how-to-do-a-6-month-savings-challenge-to-save-money-fast-clever-girl-finance.md",
+    "status": "ok",
+    "error": ""
+  },
+  {
+    "seed": "Money Under 30 | How Much Should You Have in Emergency Savings?",
+    "publisher": "Money Under 30",
+    "requestedTitle": "How Much Should You Have in Emergency Savings?",
+    "resolvedTitle": "Emergency fund calculator: How much should you save? | Money Under 30",
+    "url": "https://www.moneyunder30.com/emergency-fund-calculator/",
+    "path": "/home/jarvis_bot/.openclaw/workspace/ContentOS/editorial/exemplars/10-emergency-fund-calculator-how-much-should-you-save-money-under-30.md",
+    "status": "ok",
+    "error": ""
+  },
+  {
+    "seed": "NerdWallet | Living Paycheck to Paycheck: What It Means and What to Do",
+    "publisher": "NerdWallet",
+    "requestedTitle": "Living Paycheck to Paycheck: What It Means and What to Do",
+    "resolvedTitle": "How to Budget Money: A Step-By-Step Guide - NerdWallet",
+    "url": "https://www.nerdwallet.com/finance/learn/how-to-budget",
+    "path": "/home/jarvis_bot/.openclaw/workspace/ContentOS/editorial/exemplars/11-how-to-budget-money-a-step-by-step-guide-nerdwallet.md",
+    "status": "ok",
+    "error": ""
+  },
+  {
+    "seed": "The Balance | How to Stop Living Paycheck to Paycheck",
+    "publisher": "The Balance",
+    "requestedTitle": "How to Stop Living Paycheck to Paycheck",
+    "resolvedTitle": "https://www.thebalancemoney.com/stop-paycheck-to-paycheck-2385520",
+    "url": "https://www.thebalancemoney.com/stop-paycheck-to-paycheck-2385520",
+    "path": "/home/jarvis_bot/.openclaw/workspace/ContentOS/editorial/exemplars/12-https-www-thebalancemoney-com-stop-paycheck-to-paycheck-2385520.md",
+    "status": "failed",
+    "error": "HTTP 402 or empty extract"
+  },
+  {
+    "seed": "Money Under 30 | How to Break the Paycheck-to-Paycheck Cycle",
+    "publisher": "Money Under 30",
+    "requestedTitle": "How to Break the Paycheck-to-Paycheck Cycle",
+    "resolvedTitle": "How to start budgeting | Money Under 30",
+    "url": "https://www.moneyunder30.com/budgeting-in-your-20s/",
+    "path": "/home/jarvis_bot/.openclaw/workspace/ContentOS/editorial/exemplars/13-how-to-start-budgeting-money-under-30.md",
+    "status": "ok",
+    "error": ""
+  },
+  {
+    "seed": "Clever Girl Finance | How to Budget When You\u2019re Broke",
+    "publisher": "Clever Girl Finance",
+    "requestedTitle": "How to Budget When You\u2019re Broke",
+    "resolvedTitle": "How To Budget With No Money: 8 Steps When Starting From Zero | Clever Girl Finance",
+    "url": "https://www.clevergirlfinance.com/how-to-budget-with-no-money/",
+    "path": "/home/jarvis_bot/.openclaw/workspace/ContentOS/editorial/exemplars/14-how-to-budget-with-no-money-8-steps-when-starting-from-zero-clever-girl-finance.md",
+    "status": "ok",
+    "error": ""
+  },
+  {
+    "seed": "NerdWallet | How to Save Money on Groceries",
+    "publisher": "NerdWallet",
+    "requestedTitle": "How to Save Money on Groceries",
+    "resolvedTitle": "How to Save Money on Groceries: 14 Tips to Try - NerdWallet",
+    "url": "https://www.nerdwallet.com/finance/learn/ways-to-save-money-on-food-groceries",
+    "path": "/home/jarvis_bot/.openclaw/workspace/ContentOS/editorial/exemplars/15-how-to-save-money-on-groceries-14-tips-to-try-nerdwallet.md",
+    "status": "ok",
+    "error": ""
+  },
+  {
+    "seed": "The Balance | Ways to Save Money on Gas",
+    "publisher": "The Balance",
+    "requestedTitle": "Ways to Save Money on Gas",
+    "resolvedTitle": "https://www.thebalancemoney.com/how-to-save-money-on-all-of-your-car-expenses-1289239",
+    "url": "https://www.thebalancemoney.com/how-to-save-money-on-all-of-your-car-expenses-1289239",
+    "path": "/home/jarvis_bot/.openclaw/workspace/ContentOS/editorial/exemplars/16-https-www-thebalancemoney-com-how-to-save-money-on-all-of-your-car-expenses-1289.md",
+    "status": "failed",
+    "error": "HTTP 402 or empty extract"
+  },
+  {
+    "seed": "Money Crashers | How to Cut Monthly Expenses Fast",
+    "publisher": "Money Crashers",
+    "requestedTitle": "How to Cut Monthly Expenses Fast",
+    "resolvedTitle": "How to Make a Personal Budget - 5 Steps to Get Started",
+    "url": "https://www.moneycrashers.com/how-to-make-a-budget/",
+    "path": "/home/jarvis_bot/.openclaw/workspace/ContentOS/editorial/exemplars/17-how-to-make-a-personal-budget-5-steps-to-get-started.md",
+    "status": "ok",
+    "error": ""
+  },
+  {
+    "seed": "NerdWallet | How to Make a Budget in 5 Steps",
+    "publisher": "NerdWallet",
+    "requestedTitle": "How to Make a Budget in 5 Steps",
+    "resolvedTitle": "How to Make a Budget You&#x27;ll Actually Use - NerdWallet Canada",
+    "url": "https://www.nerdwallet.com/ca/p/article/finance/how-to-budget",
+    "path": "/home/jarvis_bot/.openclaw/workspace/ContentOS/editorial/exemplars/18-how-to-make-a-budget-you-x27-ll-actually-use-nerdwallet-canada.md",
+    "status": "ok",
+    "error": ""
+  },
+  {
+    "seed": "Ramsey Solutions | How to Budget Money",
+    "publisher": "Ramsey Solutions",
+    "requestedTitle": "How to Budget Money",
+    "resolvedTitle": "A Proven Plan for Financial Success - Ramsey",
+    "url": "https://www.ramseysolutions.com/",
+    "path": "/home/jarvis_bot/.openclaw/workspace/ContentOS/editorial/exemplars/19-a-proven-plan-for-financial-success-ramsey.md",
+    "status": "ok",
+    "error": ""
+  },
+  {
+    "seed": "YNAB | How to Budget Your Money (Beginner Guide)",
+    "publisher": "YNAB",
+    "requestedTitle": "How to Budget Your Money (Beginner Guide)",
+    "resolvedTitle": "The Ultimate Get Started Guide | YNAB",
+    "url": "https://www.ynab.com/guide/the-ultimate-get-started-guide",
+    "path": "/home/jarvis_bot/.openclaw/workspace/ContentOS/editorial/exemplars/20-the-ultimate-get-started-guide-ynab.md",
+    "status": "ok",
+    "error": ""
+  }
+]

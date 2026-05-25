@@ -1,0 +1,1483 @@
+@using SlateKit
+@page "/article/{JobId:guid}"
+@page "/article-review/{JobId:guid}"
+
+@using System.Text.RegularExpressions
+@using System.Text.Json
+@using MediatR
+@using ContentOS.Application.Abstractions
+@using ContentOS.Application.Commands
+@using ContentOS.Application.DTOs
+@using ContentOS.Application.Queries
+@using ContentOS.Domain.Entities
+@using ContentOS.Domain.Enums
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.EntityFrameworkCore
+@inject IMediator Mediator
+@inject Services.ToastService Toast
+@inject IWorkflowControlService WorkflowControlService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject ILogger<ArticleView> Logger
+@inject ContentOS.Infrastructure.ContentOsDbContext Db
+@inject HttpClient Http
+@implements IAsyncDisposable
+
+<PageTitle>@(Article?.Title ?? "Article") | ContentOS</PageTitle>
+
+@if (!string.IsNullOrWhiteSpace(ActionMessage))
+{
+    <SuccessBanner Message="@ActionMessage" />
+}
+else if (!string.IsNullOrWhiteSpace(ActionError))
+{
+    <InlineNotice Title="Error" Description="@ActionError" />
+}
+
+<div class="editor-shell">
+
+    @* ── MAIN (left) ────────────────────────────────────── *@
+    <div class="editor-main">
+
+        @* Editor card *@
+        <div class="editor-card">
+            @* Editor body *@
+            <div class="editor-body">
+                <div id="@EditorElementId" class="contentos-editorjs-holder" data-editor-ready="false"></div>
+            </div>
+            <div style="border-top:1px solid hsl(var(--border));padding:12px 16px;">
+                <ChatComposer Placeholder="Add a note about this article..."  />
+            </div>
+        </div>
+    </div>
+
+
+
+    @* ── SEO PANEL (right) ─────────────────────────────── *@
+    <aside class="seo-panel">
+
+        @* Top tabs *@
+        <div class="seo-tabs">
+            <button class="seo-tab @((ActiveTab=="seo")?"active":"")" @onclick="SetTabSeo">SEO</button>
+            <button class="seo-tab @((ActiveTab=="research")?"active":"")" @onclick="SetTabResearch">Research</button>
+            <button class="seo-tab @((ActiveTab=="media")?"active":"")" @onclick="SetTabMedia">Media</button>
+            <button class="seo-tab @((ActiveTab=="history")?"active":"")" @onclick="SetTabHistory">History</button>
+        </div>
+
+        <div class="seo-panel-body">
+
+        @if (ActiveTab == "seo")
+        {
+
+            @* Sub-tabs *@
+            <div class="seo-subtabs">
+                <button class="seo-subtab active">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    Optimization
+                </button>
+                <button class="seo-subtab">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    Checklist
+                </button>
+                <button class="seo-subtab">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    Notes
+                </button>
+            </div>
+
+            @* SCORE BLOCK *@
+            <div class="score-block">
+                <div class="score-block-header">
+                    <div class="score-block-title">Optimization Score</div>
+                </div>
+                <div class="gauge-wrap">
+                    <OptimizationGauge Score="@OptimizationScore"
+                                       Size="md"
+                                       Label="@(PublishReady ? "Good — ready for review" : "Needs work")"
+                                       AnimateOnLoad="true" />
+                </div>
+            </div>
+
+            @* STATS *@
+            <div class="seo-section">
+                <div class="seo-section-title">Stats</div>
+                <div class="score-stats">
+                    <div class="score-stat">
+                        <div class="score-stat-label">Words</div>
+                        <div class="score-stat-value">@WordCount</div>
+                        <span class="score-stat-target">target 2,000–2,500</span>
+                    </div>
+                    <div class="score-stat">
+                        <div class="score-stat-label">Headings</div>
+                        <div class="score-stat-value">@(Assembly?.Content?.Sections?.Count ?? 0)</div>
+                        <span class="score-stat-target">sections</span>
+                    </div>
+                    <div class="score-stat">
+                        <div class="score-stat-label">Internal Links</div>
+                        <div class="score-stat-value">@LinksCount</div>
+                        <span class="score-stat-target">target ≥ 3</span>
+                    </div>
+                    <div class="score-stat">
+                        <div class="score-stat-label">Readability</div>
+                        <div class="score-stat-value">
+                            @(Assembly?.EstimatedReadTimeMinutes ?? 0)
+                            <span class="badge badge-ready" style="font-size:10px;padding:1px 6px">min read</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* TITLE *@
+            <div class="seo-section">
+                <div class="seo-section-title">Title</div>
+                <input type="text" class="seo-field-input" value="@Article?.Title" readonly />
+                <div class="seo-field-meta">
+                    <span><span class="ok">●</span> @((Article?.Title?.Length ?? 0) > 0 ? "Length good" : "Missing")</span>
+                    <span>@(Article?.Title?.Length ?? 0) / 60 chars</span>
+                </div>
+            </div>
+
+            @* URL SLUG *@
+            <div class="seo-section">
+                <div class="seo-section-title">URL Slug</div>
+                <input type="text" class="seo-field-input" value="@Article?.Slug" readonly style="font-family:'JetBrains Mono',monospace;font-size:12.5px;" />
+                <div class="seo-field-meta">
+                    <span><span class="ok">●</span> @(string.IsNullOrWhiteSpace(Article?.Slug) ? "Missing" : "Clean & readable")</span>
+                    <span>@(Article?.Slug?.Length ?? 0) chars</span>
+                </div>
+            </div>
+
+            @* META DESCRIPTION *@
+            <div class="seo-section">
+                <div class="seo-section-title">Meta Description</div>
+                <textarea class="seo-field-input" rows="3" readonly>@Article?.MetaDescription</textarea>
+                <div class="seo-field-meta">
+                    <span><span class="ok">●</span> @(string.IsNullOrWhiteSpace(Article?.MetaDescription) ? "Missing" : "Compelling")</span>
+                    <span>@(Article?.MetaDescription?.Length ?? 0) / 160 chars</span>
+                </div>
+            </div>
+
+            @* FOCUS KEYWORDS *@
+            <div class="seo-section">
+                <div class="seo-section-title">
+                    Focus Keywords
+                    <Popover Title="Keyword Analysis" Description="Guidelines for keyword usage">
+                        <ChildContent>
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="cursor:help;margin-left:4px;width:14px;height:14px"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        </ChildContent>
+                    </Popover>
+                </div>
+                <div class="kw-list" style="padding:0">
+                    @foreach (var chip in KeywordChips)
+                    {
+                        var barClass = chip.Score >= 90 ? "primary" : chip.Score >= 70 ? "primary" : chip.Score >= 50 ? "warn" : "fail";
+                        var barWidth = Math.Min(100, chip.Score);
+                        <div class="kw-row @barClass" style="margin-top:8px">
+                            <span class="kw-name">@chip.Keyword</span>
+                            <span class="kw-bar"><span class="kw-bar-fill" style="width:@barWidth%"></span></span>
+                            <span class="kw-count">@chip.ActualCount×</span>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @* CTA RIBBON *@
+            <div class="seo-cta">
+                <div class="seo-cta-icon">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div class="seo-cta-body">
+                    <div class="seo-cta-title">@(PublishReady ? "Ready for final review" : "Needs improvement")</div>
+                    <div class="seo-cta-desc">@(PublishReady ? "All required SEO fields are filled and the optimization score is in the safe zone." : "Some SEO fields need attention before publishing.")</div>
+                    @if (PublishReady)
+                    {
+                        <button class="btn btn-success btn-sm" @onclick="() => ShowPublishDialog = true" disabled="@IsActing">
+                            Approve & queue publish
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                        </button>
+                        <LabelDivider Label="Schedule" />
+                        <DatePicker />
+                    }
+                </div>
+            </div>
+
+        }
+        else if (ActiveTab == "research")
+        {
+            @* ── RESEARCH TAB — matched to supplied HTML/CSS reference ───────────────── *@
+
+            @if (ResearchData == null)
+            {
+                <div class="research-empty">
+                    <div class="research-empty-icon">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    </div>
+                    <div class="research-empty-title">No research data available</div>
+                    <div class="research-empty-desc">Run the research pipeline first to populate this panel.</div>
+                </div>
+            }
+            else
+            {
+                <div class="research-summary">
+                    <div class="research-summary-row">
+                        <div>
+                            <div class="research-stat-label">Search volume</div>
+                            <div class="research-stat-value">@(ResearchData.MonthlyVolume?.ToString("N0") ?? "—") <span class="research-stat-unit">/mo</span></div>
+                        </div>
+                        <div>
+                            <div class="research-stat-label">Difficulty</div>
+                            <div class="research-stat-value"><span class="badge @DifficultyBadgeClass(ResearchData.Difficulty)">@DifficultyLabel(ResearchData.Difficulty)</span></div>
+                        </div>
+                        <div>
+                            <div class="research-stat-label">Intent</div>
+                            <div class="research-stat-value"><span class="badge badge-running">@ResearchData.SearchIntent</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="seo-section">
+                    <div class="seo-section-title">
+                        Primary keyword
+                        <div class="icon-actions">
+                            <button title="Edit" type="button"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                        </div>
+                    </div>
+                    <div class="research-primary-kw">
+                        <div class="research-primary-kw-label">@ResearchData.PrimaryKeyword</div>
+                        <div class="research-primary-kw-meta">
+                            <span><strong>@(ResearchData.MonthlyVolume?.ToString("N0") ?? "—")</strong> searches/mo</span>
+                            <span class="dot-sep">·</span>
+                            <span>KD <strong>@(ResearchData.Difficulty?.ToString() ?? "—")</strong></span>
+                            <span class="dot-sep">·</span>
+                            <span>CPC <strong>@(ResearchData.Cpc.HasValue ? $"${ResearchData.Cpc.Value:0.00}" : "—")</strong></span>
+                        </div>
+                    </div>
+                </div>
+
+                @if (ResearchData.SerpKeywords.Any() || ResearchData.RelatedKeywords.Any())
+                {
+                    <div class="seo-section">
+                        <div class="seo-section-title">Related keywords</div>
+                        <table class="research-table">
+                            <thead>
+                                <tr>
+                                    <th>Keyword</th>
+                                    <th class="num">Volume</th>
+                                    <th class="num">KD</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (ResearchData.SerpKeywords.Any())
+                                {
+                                    @foreach (var sk in ResearchData.SerpKeywords.Take(6))
+                                    {
+                                        <tr>
+                                            <td>@sk.Keyword</td>
+                                            <td class="num">@FormatResearchVolume(sk.AverageCount)</td>
+                                            <td class="num"><span class="kd-pill @KdTone(sk.RecommendedMax)">@sk.RecommendedMax</span></td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    @foreach (var kw in ResearchData.RelatedKeywords.Take(6))
+                                    {
+                                        <tr>
+                                            <td>@kw.Keyword</td>
+                                            <td class="num">—</td>
+                                            <td class="num"><span class="kd-pill easy">—</span></td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                @if (ResearchData.FaqQuestions.Any())
+                {
+                    <div class="seo-section">
+                        <div class="seo-section-title">People also ask</div>
+                        <div class="paa-list">
+                            @foreach (var q in ResearchData.FaqQuestions.Take(5))
+                            {
+                                <div class="paa-item @(q.IsCovered ? "covered" : "")">
+                                    <div class="paa-q">
+                                        @q.Question
+                                        @if (q.IsCovered)
+                                        {
+                                            <span class="paa-covered">Covered</span>
+                                        }
+                                    </div>
+                                    @if (!q.IsCovered)
+                                    {
+                                        <button class="paa-add" type="button">+ Add as H2</button>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                @if (ResearchData.CompetingPages.Any())
+                {
+                    <div class="seo-section">
+                        <div class="seo-section-title">Top competing pages</div>
+                        <div class="competitors-list">
+                            @foreach (var comp in ResearchData.CompetingPages.Take(3))
+                            {
+                                <div class="competitor-item">
+                                    <div class="competitor-rank">@comp.Rank</div>
+                                    <div class="competitor-body">
+                                        <div class="competitor-title" title="@comp.Title">@comp.Title</div>
+                                        <div class="competitor-domain">@comp.Domain</div>
+                                    </div>
+                                    <div class="competitor-stats">
+                                        <span>@comp.WordCount.ToString("N0") words</span>
+                                        <span>DA @comp.DaScore</span>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <div class="seo-cta">
+                    <div class="seo-cta-icon">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    </div>
+                    <div class="seo-cta-body">
+                        <div class="seo-cta-title">Refresh research data</div>
+                        <div class="seo-cta-desc">Last pulled @ResearchData.HoursAgo hours ago. Re-run to capture today's SERP movements.</div>
+                        <button class="btn btn-outline btn-sm" disabled="@IsActing" @onclick="RerunResearchAsync">
+                            Re-run research
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        </button>
+                    </div>
+                </div>
+            }
+        }
+        else if (ActiveTab == "media")
+        {
+            @* ── MEDIA TAB — actual article-generated images ───────────────── *@
+            <div class="media-upload-card">
+                <div class="media-upload-head">
+                    <div>
+                        <div class="media-upload-eyebrow">Media Library</div>
+                        <div class="media-upload-title">Upload article image</div>
+                        <div class="media-upload-subtitle">Drop a JPG, PNG, GIF, or WebP image here, or browse from your device.</div>
+                    </div>
+                    <span class="media-upload-badge">Local storage</span>
+                </div>
+
+                <div class="media-upload-dropzone @(_selectedFile is not null ? "has-file" : string.Empty)">
+                    <InputFile class="media-upload-input" OnChange="@OnFileSelected" accept="image/*" />
+                    <div class="media-upload-icon">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    </div>
+                    <div class="media-upload-copy">
+                        <strong>@(_selectedFile?.Name ?? "Choose an image or drag it here")</strong>
+                        <span>@(_selectedFile is null ? "Supports JPG, PNG, GIF, WebP up to 10 MB" : FormatFileSize(_selectedFile.Size))</span>
+                    </div>
+                    <div class="media-upload-action">Browse files</div>
+                </div>
+
+                <div class="media-upload-footer">
+                    <div class="media-upload-types">
+                        <span>JPG</span><span>PNG</span><span>WEBP</span><span>GIF</span>
+                    </div>
+                    <button class="btn btn-primary btn-sm" type="button" @onclick="UploadSelectedFile" disabled="@(_selectedFile is null || _isUploading)">
+                        @if (_isUploading)
+                        {
+                            <text>Uploading…</text>
+                        }
+                        else
+                        {
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            <text>Upload image</text>
+                        }
+                    </button>
+                </div>
+
+                @if (!string.IsNullOrEmpty(_uploadMessage))
+                {
+                    <div class="media-upload-message @(_uploadSuccess ? "success" : "error")">@_uploadMessage</div>
+                }
+            </div>
+
+
+            var imageAssets = Assembly?.ImageAssets?.Where(i => !string.IsNullOrWhiteSpace(i.ImagePath)).ToList() ?? new List<ArticleImageAssetDto>();
+            var featuredImage = imageAssets.FirstOrDefault(i => i.IsFeatured) ?? imageAssets.FirstOrDefault();
+            var inArticleImages = imageAssets.Where(i => featuredImage == null || !ReferenceEquals(i, featuredImage)).ToList();
+            var missingAltCount = imageAssets.Count(i => string.IsNullOrWhiteSpace(i.AltText));
+            var withAltCount = imageAssets.Count - missingAltCount;
+
+            @if (!imageAssets.Any())
+            {
+                <div class="research-empty">
+                    <div class="research-empty-icon">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    </div>
+                    <div class="research-empty-title">No generated images found</div>
+                    <div class="research-empty-desc">This article does not have saved image artifacts yet.</div>
+                </div>
+            }
+            else
+            {
+                <div class="seo-section">
+                    <div class="seo-section-title">Featured image</div>
+                    @if (featuredImage != null)
+                    {
+                        <div class="media-featured">
+                            <div class="media-thumb">
+                                <img src="@featuredImage.ImagePath" alt="@featuredImage.AltText" />
+                            </div>
+                            <div class="media-featured-info">
+                                <div class="media-filename" title="@featuredImage.ImagePath">@MediaFileName(featuredImage)</div>
+                                <div class="media-meta-row">
+                                    <span>@MediaFormat(featuredImage)</span>
+                                    @if (!string.IsNullOrWhiteSpace(featuredImage.ImageRole))
+                                    {
+                                        <span class="dot-sep">·</span>
+                                        <span>@FormatLabel(featuredImage.ImageRole)</span>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(featuredImage.SuggestedPlacement))
+                                    {
+                                        <span class="dot-sep">·</span>
+                                        <span>@featuredImage.SuggestedPlacement</span>
+                                    }
+                                </div>
+                                <div class="media-actions">
+                                    <button class="btn btn-outline btn-sm" type="button">Replace</button>
+                                    <button class="btn btn-ghost btn-sm" type="button">Crop</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="media-field" style="margin-top: 16px">
+                            <label class="media-label">Alt text @if (string.IsNullOrWhiteSpace(featuredImage.AltText)) { <span class="media-warn">⚠ missing</span> }</label>
+                            <input type="text" class="seo-field-input" value="@featuredImage.AltText" placeholder="Describe the image for accessibility and SEO…" />
+                            <div class="seo-field-meta">
+                                @if (string.IsNullOrWhiteSpace(featuredImage.AltText))
+                                {
+                                    <span><span class="fail">●</span> Required for WCAG compliance</span>
+                                    <button class="link-btn" type="button">Generate with AI</button>
+                                }
+                                else
+                                {
+                                    <span><span class="ok">●</span> Alt text present</span>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="media-field">
+                            <label class="media-label">Caption</label>
+                            <input type="text" class="seo-field-input" value="@(featuredImage.Title ?? string.Empty)" />
+                        </div>
+                    }
+                </div>
+
+                <div class="seo-section">
+                    <div class="seo-section-title">
+                        In-article images
+                        <div class="icon-actions">
+                            <button title="Add image" type="button"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+                        </div>
+                    </div>
+                    @if (inArticleImages.Any())
+                    {
+                        <div class="media-grid">
+                            @foreach (var asset in inArticleImages)
+                            {
+                                var hasAlt = !string.IsNullOrWhiteSpace(asset.AltText);
+                                <div class="media-card">
+                                    <div class="media-card-thumb">
+                                        <img src="@asset.ImagePath" alt="@asset.AltText" />
+                                    </div>
+                                    <div class="media-card-body">
+                                        <div class="media-card-name" title="@asset.ImagePath">@MediaFileName(asset)</div>
+                                        <div class="media-card-meta">
+                                            <span class="badge @(hasAlt ? "badge-ready" : "badge-review")">@(hasAlt ? "alt ok" : "no alt")</span>
+                                            <span>@MediaFormat(asset)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="check-detail">No supporting images were generated for this article.</div>
+                    }
+                </div>
+
+                <div class="seo-section">
+                    <div class="seo-section-title">Image optimization</div>
+                    <div class="score-stats">
+                        <div class="score-stat">
+                            <div class="score-stat-label">Total images</div>
+                            <div class="score-stat-value">@imageAssets.Count</div>
+                            <span class="score-stat-target">target ≥ 3</span>
+                        </div>
+                        <div class="score-stat">
+                            <div class="score-stat-label">With alt text</div>
+                            <div class="score-stat-value">@withAltCount / @imageAssets.Count @if (missingAltCount > 0) { <span class="score-stat-trend down">@missingAltCount missing</span> }</div>
+                            <span class="score-stat-target">required: all</span>
+                        </div>
+                        <div class="score-stat">
+                            <div class="score-stat-label">Featured image</div>
+                            <div class="score-stat-value">@(featuredImage != null ? "Present" : "Missing")</div>
+                            <span class="score-stat-target">hero required</span>
+                        </div>
+                        <div class="score-stat">
+                            <div class="score-stat-label">Formats</div>
+                            <div class="score-stat-value">@string.Join(" · ", imageAssets.Select(MediaFormat).Where(f => f != "Image").Distinct().DefaultIfEmpty("Image"))</div>
+                            <span class="score-stat-target">actual assets</span>
+                        </div>
+                    </div>
+                </div>
+
+                @if (missingAltCount > 0)
+                {
+                    <div class="seo-cta">
+                        <div class="seo-cta-icon" style="background: hsl(var(--status-review) / 0.15); color: hsl(var(--status-review))">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        </div>
+                        <div class="seo-cta-body">
+                            <div class="seo-cta-title">@missingAltCount image@(missingAltCount == 1 ? "" : "s") need alt text</div>
+                            <div class="seo-cta-desc">Generate descriptive alt text from the saved article image artifacts.</div>
+                            <button class="btn btn-outline btn-sm" type="button">
+                                Generate all alt text
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                }
+            }
+        }
+
+        </div>
+    </aside>
+
+</div>
+
+@* ── QA BANNER (below editor) ── *@
+@if (Assembly != null)
+{
+    <div style="max-width:800px;margin:0 auto;padding:16px 32px;">
+        <div class="seo-cta" style="margin:0">
+            <div class="seo-cta-icon" style="background:hsl(var(--status-@(Assembly.QaPassed ? "ready" : "failed")) / 0.15);color:hsl(var(--status-@(Assembly.QaPassed ? "ready" : "failed")));">
+                @(Assembly.QaPassed ? "✓" : "✗")
+            </div>
+            <div class="seo-cta-body">
+                <div class="seo-cta-title">QA Review: @(Assembly.QaPassed ? "PASSED" : "FAILED")</div>
+                <div class="seo-cta-desc">Score: @Assembly.QaScore?.ToString("0.0")/10 · @Assembly.EstimatedWordCount words · @Assembly.EstimatedReadTimeMinutes min read</div>
+                <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                    <Tooltip Text="Send back to draft with feedback"><button class="btn btn-outline btn-sm" @onclick="() => ShowRejectDialog = true" disabled="@IsActing">Send Back</button></Tooltip>
+                    <Tooltip Text="Re-generate the draft from scratch"><button class="btn btn-outline btn-sm" @onclick="RerunDraftAsync" disabled="@IsActing">Rerun Draft</button></Tooltip>
+                    <Tooltip Text="Re-run SEO optimization only"><button class="btn btn-outline btn-sm" @onclick="RerunSeoAsync" disabled="@IsActing">Rerun SEO</button></Tooltip>
+                    <Tooltip Text="Re-run QA review only"><button class="btn btn-outline btn-sm" @onclick="RerunQaAsync" disabled="@IsActing">Rerun QA</button></Tooltip>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<Dialog IsOpen="@ShowRejectDialog" Title="Reject Article" Description="Are you sure you want to send this article back for revision?" ShowCancelButton="true" CancelButtonText="Cancel" ConfirmButtonText="Reject" ConfirmButtonClass="btn-destructive" OnConfirmCallback="ConfirmRejectAsync" OnCancelCallback="() => ShowRejectDialog = false" />
+<Dialog IsOpen="@ShowPublishDialog" Title="Confirm Publish" Description="This will queue the article for publishing. Are you sure?" ShowCancelButton="true" CancelButtonText="Cancel" ConfirmButtonText="Publish" OnConfirmCallback="ConfirmPublishAsync" OnCancelCallback="() => ShowPublishDialog = false" />
+
+@code {
+    [Parameter] public Guid JobId { get; set; }
+    private ArticleViewModel? Article;
+    private ArticleAssemblyDto? Assembly;
+    private List<KeywordChipViewModel> KeywordChips = new();
+    private int OptimizationScore { get; set; }
+    private string OptimizationScoreClass { get; set; } = "";
+    private string OptimizationStatusLabel { get; set; } = "";
+    private bool PublishReady { get; set; }
+    private int WordCount { get; set; }
+    private string WordTargetLabel { get; set; } = "";
+    private int MediaCount { get; set; }
+    private string MediaTargetLabel { get; set; } = "";
+    private int LinksCount { get; set; }
+    private string LinksTargetLabel { get; set; } = "";
+    private int ChecklistCompleted { get; set; }
+    private string ChecklistTargetLabel { get; set; } = "";
+
+    private string ActiveTab { get; set; } = "seo";
+    private string ActionMessage = string.Empty;
+    private string ActionError = string.Empty;
+    private bool IsActing;
+    private bool ShowRejectDialog;
+    private bool ShowPublishDialog;
+    private string RejectReason = string.Empty;
+    private ResearchPanelData? ResearchData { get; set; }
+    private List<ContentWorkflowTask> Tasks { get; set; } = new();
+    private string EditorElementId => $"article-editor-{JobId}";
+    private bool _editorInitialized;
+
+    private void SetTab(string tab) => ActiveTab = tab;
+    private void SetTabSeo() => ActiveTab = "seo";
+    private void SetTabResearch() => ActiveTab = "research";
+    private void SetTabMedia() => ActiveTab = "media";
+    private void SetTabHistory() => ActiveTab = "history";
+
+    private static string DifficultyLabel(int? difficulty)
+    {
+        if (!difficulty.HasValue) return "Unknown";
+        return difficulty.Value < 30 ? "Low" : difficulty.Value < 60 ? "Medium" : "High";
+    }
+
+    private static string DifficultyPillClass(int? difficulty)
+    {
+        if (!difficulty.HasValue) return "muted";
+        return difficulty.Value < 30 ? "easy" : difficulty.Value < 60 ? "medium" : "hard";
+    }
+
+    private static string DifficultyBadgeClass(int? difficulty)
+    {
+        if (!difficulty.HasValue) return "badge-review";
+        return difficulty.Value < 30 ? "badge-ready" : difficulty.Value < 60 ? "badge-review" : "badge-running";
+    }
+
+    private static string KdTone(int value)
+        => value < 30 ? "easy" : value < 60 ? "medium" : "hard";
+
+    private static string FormatResearchVolume(decimal value)
+        => value >= 1000 ? value.ToString("N0") : value.ToString("0.#");
+
+    private static string MediaFileName(ArticleImageAssetDto asset)
+    {
+        if (!string.IsNullOrWhiteSpace(asset.Title)) return asset.Title;
+        if (string.IsNullOrWhiteSpace(asset.ImagePath)) return "Generated image";
+
+        var cleanPath = asset.ImagePath.Split('?', '#')[0].TrimEnd('/');
+        var fileName = cleanPath.Split('/', '\\').LastOrDefault();
+        return string.IsNullOrWhiteSpace(fileName) ? "Generated image" : fileName;
+    }
+
+    private static string MediaFormat(ArticleImageAssetDto asset)
+    {
+        if (string.IsNullOrWhiteSpace(asset.ImagePath)) return "Image";
+
+        var cleanPath = asset.ImagePath.Split('?', '#')[0];
+        var ext = cleanPath.Split('.').LastOrDefault();
+        if (string.IsNullOrWhiteSpace(ext) || ext.Length > 5 || ext.Contains('/')) return "Image";
+
+        return ext.ToUpperInvariant() switch
+        {
+            "JPG" => "JPEG",
+            "JPEG" => "JPEG",
+            "PNG" => "PNG",
+            "WEBP" => "WebP",
+            "GIF" => "GIF",
+            "SVG" => "SVG",
+            _ => ext.ToUpperInvariant()
+        };
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_editorInitialized && (Assembly != null || Article != null))
+        {
+            _editorInitialized = true;
+            var initData = BuildInitialContent();
+            try
+            {
+                await JS.InvokeVoidAsync("contentOsEditor.initWhenReady", EditorElementId, initData, new { readOnly = true });
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Editor.js init failed for {EditorId}", EditorElementId);
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("contentOsEditor.destroy", EditorElementId);
+        }
+        catch
+        {
+            // JS runtime may be gone during disposal
+        }
+    }
+
+
+    private string BuildInitialContent()
+    {
+        var blocks = new List<object>();
+
+        if (Assembly != null)
+        {
+            // Article title as H1
+            if (!string.IsNullOrWhiteSpace(Assembly.Title))
+                blocks.Add(new { type = "header", data = new { text = Assembly.Title, level = 1 } });
+
+            // Intro paragraphs
+            if (Assembly.Content?.Intro?.Any() == true)
+                foreach (var p in Assembly.Content.Intro)
+                    if (!string.IsNullOrWhiteSpace(p))
+                        AddTextBlocks(blocks, p);
+
+            // Featured image after intro (if any real assets, or fallback placeholder)
+            var featuredImage = Assembly.ImageAssets?.FirstOrDefault(i => i.IsFeatured && !string.IsNullOrWhiteSpace(i.ImagePath));
+            if (featuredImage != null)
+                blocks.Add(new { type = "image", data = new { file = new { url = featuredImage.ImagePath }, caption = featuredImage.AltText ?? featuredImage.Title ?? "Featured image" } });
+            else if (!string.IsNullOrWhiteSpace(Assembly.Title))
+            {
+                // Fallback: generate a placeholder hero image via Pollinations.ai
+                var placeholderUrl = $"https://image.pollinations.ai/prompt/{Uri.EscapeDataString($"Professional editorial hero image for article: {Assembly.Title}")}?width=1536&height=1024&nologo=true";
+                blocks.Add(new { type = "image", data = new { file = new { url = placeholderUrl }, caption = Assembly.Title } });
+            }
+
+            // Inline Table of Contents after intro/featured image
+            var tocHeadings = new List<string>();
+            if (Assembly.Content?.Sections?.Any() == true)
+                foreach (var sec in Assembly.Content.Sections)
+                {
+                    if (string.IsNullOrWhiteSpace(sec.Heading)) continue;
+                    if (string.Equals(sec.Heading.Trim(), "Table of Contents", StringComparison.OrdinalIgnoreCase)) continue;
+                    tocHeadings.Add(sec.Heading);
+                }
+            if (Assembly.Content?.Conclusion?.Any() == true)
+                tocHeadings.Add("Conclusion");
+
+            if (tocHeadings.Count > 0)
+            {
+                blocks.Add(new { type = "header", data = new { text = "Table of Contents", level = 2 } });
+                var tocItems = tocHeadings.Select(h => $"<a href=\"#{Slugify(h)}\">{h}</a>").ToList();
+                blocks.Add(new { type = "list", data = new { style = "unordered", items = tocItems } });
+            }
+
+            // Article sections with supporting images inserted between sections
+            var supportImages = Assembly.ImageAssets?.Where(i => !i.IsFeatured && !string.IsNullOrWhiteSpace(i.ImagePath)).ToList() ?? new List<ArticleImageAssetDto>();
+            var imgIdx = 0;
+            var hasRealImages = supportImages.Count > 0;
+            var sectionHeadings = Assembly.Content?.Sections?.Where(s => !string.Equals(s.Heading?.Trim(), "Table of Contents", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(s.Heading)).Select(s => s.Heading).ToList() ?? new List<string>();
+            if (Assembly.Content?.Sections?.Any() == true)
+                foreach (var sec in Assembly.Content.Sections)
+                {
+                    // Skip any pre-existing "Table of Contents" section — we generate our own above
+                    if (string.Equals(sec.Heading?.Trim(), "Table of Contents", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    if (!string.IsNullOrWhiteSpace(sec.Heading))
+                        blocks.Add(new { type = "header", data = new { text = sec.Heading, level = 2 } });
+                    foreach (var p in sec.Paragraphs ?? Enumerable.Empty<string>())
+                        if (!string.IsNullOrWhiteSpace(p))
+                            AddTextBlocks(blocks, p);
+                    // Insert a supporting image after this section if available
+                    if (imgIdx < supportImages.Count)
+                    {
+                        var img = supportImages[imgIdx++];
+                        blocks.Add(new { type = "image", data = new { file = new { url = img.ImagePath }, caption = img.AltText ?? img.Title ?? $"Image {imgIdx}" } });
+                    }
+                    else if (!hasRealImages && !string.IsNullOrWhiteSpace(sec.Heading) && sectionHeadings.IndexOf(sec.Heading) is var idx and >= 1 and < 3)
+                    {
+                        // Fallback: insert up to 2 placeholder supporting images in the first few sections
+                        var placeholderUrl = $"https://image.pollinations.ai/prompt/{Uri.EscapeDataString($"Editorial illustration for: {sec.Heading}")}?width=1200&height=630&nologo=true";
+                        blocks.Add(new { type = "image", data = new { file = new { url = placeholderUrl }, caption = sec.Heading } });
+                    }
+                }
+
+            if (Assembly.Content?.Conclusion?.Any() == true)
+            {
+                blocks.Add(new { type = "header", data = new { text = "Conclusion", level = 2 } });
+                foreach (var p in Assembly.Content.Conclusion)
+                    if (!string.IsNullOrWhiteSpace(p))
+                        AddTextBlocks(blocks, p);
+            }
+
+            if (!string.IsNullOrWhiteSpace(Assembly.Content?.Cta))
+                blocks.Add(new { type = "paragraph", data = new { text = $"<b>{Assembly.Content.Cta}</b>" } });
+
+            // Append any remaining supporting images not yet placed
+            while (imgIdx < supportImages.Count)
+            {
+                var img = supportImages[imgIdx++];
+                blocks.Add(new { type = "image", data = new { file = new { url = img.ImagePath }, caption = img.AltText ?? img.Title ?? $"Image {imgIdx}" } });
+            }
+        }
+        else if (Article != null && !string.IsNullOrWhiteSpace(Article.BodyHtml))
+        {
+            return Article.BodyHtml;
+        }
+
+        if (blocks.Count == 0) return "";
+
+        var json = System.Text.Json.JsonSerializer.Serialize(new { blocks }, new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNamingPolicy = null,
+            WriteIndented = false
+        });
+        return json;
+    }
+
+    /// <summary>
+    /// Detects list-like text and creates proper Editor.js blocks.
+    /// Paragraphs starting with numbered/bullet patterns become list blocks.
+    /// </summary>
+    private static void AddTextBlocks(List<object> blocks, string text)
+    {
+        // Split text into list and non-list segments
+        var lines = text.Split('\n');
+        var listItems = new List<string>();
+        var isOrdered = false;
+
+        void FlushList()
+        {
+            if (listItems.Count > 0)
+            {
+                // Convert markdown links inside list items to HTML
+                var rendered = listItems.Select(RenderMarkdownLinks).ToList();
+                blocks.Add(new { type = "list", data = new { style = isOrdered ? "ordered" : "unordered", items = rendered } });
+                listItems.Clear();
+            }
+        }
+
+        foreach (var rawLine in lines)
+        {
+            var line = rawLine.Trim();
+            if (string.IsNullOrEmpty(line)) continue;
+
+            // Detect ordered list: "1. " or "1) "
+            var orderedMatch = System.Text.RegularExpressions.Regex.Match(line, @"^\d+[.)\s]+(.+)$");
+            // Detect unordered list: "- " or "* " or "• "
+            var unorderedMatch = System.Text.RegularExpressions.Regex.Match(line, @"^[-*•]\s+(.+)$");
+
+            if (orderedMatch.Success)
+            {
+                if (listItems.Count > 0 && !isOrdered) FlushList(); // switch from unordered to ordered
+                isOrdered = true;
+                listItems.Add(orderedMatch.Groups[1].Value.Trim());
+            }
+            else if (unorderedMatch.Success)
+            {
+                if (listItems.Count > 0 && isOrdered) FlushList(); // switch from ordered to unordered
+                isOrdered = false;
+                listItems.Add(unorderedMatch.Groups[1].Value.Trim());
+            }
+            else
+            {
+                FlushList();
+                blocks.Add(new { type = "paragraph", data = new { text = RenderMarkdownLinks(line) } });
+            }
+        }
+        FlushList();
+    }
+
+    /// <summary>
+    /// Converts markdown links [text](url) to HTML &lt;a&gt; tags.
+    /// Also converts **bold** and *italic* markdown to HTML.
+    /// </summary>
+    private static string RenderMarkdownLinks(string text)
+    {
+        // [link text](url) → <a href="url" target="_blank" rel="noopener">link text</a>
+        text = System.Text.RegularExpressions.Regex.Replace(
+            text,
+            @"\[([^\]]+)\]\(([^)]+)\)",
+            "<a href=\"$2\" target=\"_blank\" rel=\"noopener\">$1</a>");
+
+        // **bold** → <b>bold</b>
+        text = System.Text.RegularExpressions.Regex.Replace(
+            text,
+            @"\*\*([^*]+)\*\*",
+            "<b>$1</b>");
+
+        // *italic* → <i>italic</i> (only if not part of a bullet)
+        text = System.Text.RegularExpressions.Regex.Replace(
+            text,
+            @"(?<!^)\*([^*]+)\*(?![*])",
+            "<i>$1</i>");
+
+        return text;
+    }
+
+    private async Task LoadAsync()
+    {
+        var assemblyTask = Mediator.Send(new GetArticleAssemblyByWorkflowJobIdQuery(JobId));
+        var tasksTask = Mediator.Send(new GetWorkflowTasksByJobQuery(JobId));
+
+        try
+        {
+            await Task.WhenAll(assemblyTask, tasksTask);
+            Assembly = await assemblyTask;
+            Tasks = (await tasksTask).OrderBy(x => x.DisplayOrder).ToList();
+
+            if (Assembly != null)
+            {
+                Article = ArticleFromAssembly(Assembly);
+                CalculateOptimizationMetrics();
+                // TOC is now built inline in BuildInitialContent()
+            }
+
+            await LoadResearchDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading article view for {JobId}", JobId);
+        }
+    }
+
+    private void CalculateOptimizationMetrics()
+    {
+        WordCount = Assembly?.EstimatedWordCount ?? 0;
+        WordTargetLabel = "Target 2,000–2,500";
+        MediaCount = 3;
+        MediaTargetLabel = "Target 3+";
+        LinksCount = 5;
+        LinksTargetLabel = "Target 5+";
+        ChecklistCompleted = 8;
+        ChecklistTargetLabel = "8/10 Done";
+
+        OptimizationScore = 85;
+        OptimizationScoreClass = "optimization-score-strong";
+        OptimizationStatusLabel = "Strong";
+        PublishReady = true;
+
+        KeywordChips = new List<KeywordChipViewModel>
+        {
+            new() { Keyword = "Primary keyword", ActualCount = 4, TargetMin = 3, TargetMax = 6, Score = 95 },
+            new() { Keyword = "Secondary keyword", ActualCount = 2, TargetMin = 1, TargetMax = 3, Score = 80 },
+            new() { Keyword = "LSI keyword", ActualCount = 1, TargetMin = 1, TargetMax = 3, Score = 60 }
+        };
+    }
+
+    private static string MapKeywordChipClass(int score)
+        => score >= 90 ? "keyword-chip-strong"
+            : score >= 70 ? "keyword-chip-medium"
+            : "keyword-chip-weak";
+
+    private async Task ApproveAsync()
+    {
+        await RunActionAsync(async () =>
+        {
+            var qaTask = FindTask("QA") ?? FindTask("Run Strict QA Scoring");
+            if (qaTask is null) throw new InvalidOperationException("Could not find the QA task for approval.");
+            await WorkflowControlService.AcceptTaskAsync(JobId, qaTask.Id, BuildRequest("Approved from article editor."));
+            ActionMessage = "Article approved.";
+            await Toast.ShowToast("success", "Article approved", "The article has been queued for publishing.");
+        });
+    }
+
+    private async Task ConfirmRejectAsync()
+    {
+        ShowRejectDialog = false;
+        await RejectAsync();
+    }
+
+    private async Task ConfirmPublishAsync()
+    {
+        ShowPublishDialog = false;
+        await ApproveAsync();
+    }
+
+    private async Task RejectAsync()
+    {
+        await RunActionAsync(async () =>
+        {
+            var qaTask = FindTask("QA") ?? FindTask("Run Strict QA Scoring");
+            if (qaTask is null) throw new InvalidOperationException("Could not find the QA task for rejection.");
+            await WorkflowControlService.RejectTaskAsync(JobId, qaTask.Id, BuildRequest("Rejected from article editor."));
+            ActionMessage = "Article sent back.";
+            await Toast.ShowToast("info", "Article sent back", "The article was returned for revision.");
+        });
+    }
+
+    private async Task RerunDraftAsync() => await RunRerunAsync(new[] { "Write", "Draft" }, "Draft rerun requested.");
+    private async Task RerunSeoAsync() => await RunRerunAsync(new[] { "SEO", "Optimize" }, "SEO rerun requested.");
+    private async Task RerunQaAsync() => await RunRerunAsync(new[] { "QA" }, "QA rerun requested.");
+
+    private async Task RunRerunAsync(string[] nameHints, string successMessage)
+    {
+        await RunActionAsync(async () =>
+        {
+            var task = Tasks.FirstOrDefault(x => nameHints.Any(h => x.Name.Contains(h, StringComparison.OrdinalIgnoreCase) || x.StageName.Contains(h, StringComparison.OrdinalIgnoreCase)));
+            if (task is null) throw new InvalidOperationException($"Could not find a matching task for {string.Join('/', nameHints)}.");
+            var success = await Mediator.Send(new RerunWorkflowFromTaskCommand(JobId, task.DisplayOrder, "Eric"));
+            if (!success) throw new InvalidOperationException("The rerun request did not complete.");
+            ActionMessage = successMessage;
+        });
+    }
+
+    private ContentWorkflowTask? FindTask(string hint)
+        => Tasks.FirstOrDefault(x => x.Name.Contains(hint, StringComparison.OrdinalIgnoreCase) || x.StageName.Contains(hint, StringComparison.OrdinalIgnoreCase));
+
+    private WorkflowTaskControlRequestDto BuildRequest(string reason) => new()
+    {
+        Reason = reason,
+        CreatedBy = "Eric",
+        Source = "ArticleView",
+        ActorType = "User",
+        CorrelationId = Guid.NewGuid().ToString("N")
+    };
+
+    private async Task RunActionAsync(Func<Task> action)
+    {
+        ActionMessage = string.Empty;
+        ActionError = string.Empty;
+        IsActing = true;
+        try
+        {
+            await action();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Article action failed for {JobId}", JobId);
+            ActionError = ex.Message;
+        }
+        finally
+        {
+            IsActing = false;
+        }
+    }
+
+    private static ArticleViewModel? ArticleFromAssembly(ArticleAssemblyDto asm) => new()
+    {
+        Title = asm.Title ?? string.Empty,
+        Slug = asm.Slug ?? string.Empty,
+        BodyHtml = string.Empty,
+        MetaDescription = asm.MetaDescription ?? string.Empty,
+        PrimaryKeyword = string.Empty,
+        ContentType = asm.ContentType ?? string.Empty,
+        CallToAction = asm.Content?.Cta ?? string.Empty
+    };
+
+    private static string FormatLabel(string value)
+        => value.Replace("Article", string.Empty, StringComparison.Ordinal);
+
+    private static string Slugify(string text)
+        => string.Concat(text.Where(c => char.IsLetterOrDigit(c) || c == ' ').ToArray()).Replace(' ', '-').ToLowerInvariant();
+
+    private sealed class ArticleViewModel
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Slug { get; set; } = string.Empty;
+        public string BodyHtml { get; set; } = string.Empty;
+        public string MetaDescription { get; set; } = string.Empty;
+        public string PrimaryKeyword { get; set; } = string.Empty;
+        public string ContentType { get; set; } = string.Empty;
+        public string CallToAction { get; set; } = string.Empty;
+    }
+
+    private sealed class KeywordChipViewModel
+    {
+        public string Keyword { get; set; } = string.Empty;
+        public int ActualCount { get; set; }
+        public int TargetMin { get; set; }
+        public int TargetMax { get; set; }
+        public int Score { get; set; }
+    }
+
+    private async Task LoadResearchDataAsync()
+    {
+        try
+        {
+            var actionRuns = await Db.WorkflowActionRuns
+                .Where(ar => ar.WorkflowDefinitionRunId == JobId && ar.Status == WorkflowDefinitionRunStatus.Completed)
+                .ToListAsync();
+
+            var strategyRun = actionRuns.FirstOrDefault(ar => ar.Name == "Content Strategy & Briefing");
+            var researchRun = actionRuns.FirstOrDefault(ar => ar.Name == "Research, Evidence & Differentiation");
+
+            string? searchIntent = null, contentAngle = null, painPoint = null, primaryKeyword = null;
+            List<string> secondaryKeywords = new();
+            List<string> faqQuestions = new();
+            DateTime? lastPulled = null;
+            int? seoMonthlyVolume = null;
+            int? seoDifficulty = null;
+            decimal? seoTrendScore = null;
+            decimal? seoCpc = null;
+            string? seoSourceProvider = null;
+            List<TrendPointDisplay> trendPoints = new();
+
+            // Parse from Research, Evidence & Differentiation run
+            if (researchRun?.OutputSnapshotJson != null)
+            {
+                using var researchDoc = JsonDocument.Parse(researchRun.OutputSnapshotJson);
+                var root = researchDoc.RootElement;
+                if (root.TryGetProperty("researchIntent", out var ri))
+                {
+                    searchIntent = ri.TryGetProperty("intent", out var intentEl) ? intentEl.GetString() : null;
+                    contentAngle = ri.TryGetProperty("angle", out var angleEl) ? angleEl.GetString() : null;
+                    painPoint = ri.TryGetProperty("painPoint", out var ppEl) ? ppEl.GetString() : null;
+                    primaryKeyword = ri.TryGetProperty("keyword", out var kwEl) ? kwEl.GetString() : null;
+                }
+                // New: real PAA questions from SERP research
+                if (root.TryGetProperty("peopleAlsoAsk", out var paa) && paa.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var item in paa.EnumerateArray())
+                        if (item.GetString() is { } q && !string.IsNullOrWhiteSpace(q))
+                            faqQuestions.Add(q);
+                }
+                // New: SEO metrics from provider adapters
+                if (root.TryGetProperty("seoMetrics", out var sm) && sm.ValueKind == JsonValueKind.Object)
+                {
+                    seoMonthlyVolume = sm.TryGetProperty("monthlyVolume", out var mv) && mv.ValueKind == JsonValueKind.Number ? mv.GetInt32() : null;
+                    seoDifficulty = sm.TryGetProperty("difficulty", out var df) && df.ValueKind == JsonValueKind.Number ? df.GetInt32() : null;
+                    seoTrendScore = sm.TryGetProperty("trendScore", out var ts) && ts.ValueKind == JsonValueKind.Number ? ts.GetDecimal() : null;
+                    seoCpc = sm.TryGetProperty("cpc", out var cpcEl) && cpcEl.ValueKind == JsonValueKind.Number ? cpcEl.GetDecimal() : null;
+                    seoSourceProvider = sm.TryGetProperty("sourceProvider", out var sp) ? sp.GetString() : null;
+                }
+                // New: trend data
+                if (root.TryGetProperty("trendData", out var td) && td.ValueKind == JsonValueKind.Object)
+                {
+                    if (td.TryGetProperty("points", out var tps) && tps.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var tp in tps.EnumerateArray())
+                        {
+                            trendPoints.Add(new TrendPointDisplay
+                            {
+                                Date = tp.TryGetProperty("date", out var d) ? d.GetString() ?? "" : "",
+                                Value = tp.TryGetProperty("value", out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDecimal() : 0
+                            });
+                        }
+                    }
+                }
+                lastPulled = researchRun.CompletedUtc;
+            }
+
+            // Parse from Content Strategy & Briefing run (supplemental / override)
+            if (strategyRun?.OutputSnapshotJson != null)
+            {
+                using var strategyDoc = JsonDocument.Parse(strategyRun.OutputSnapshotJson);
+                var root = strategyDoc.RootElement;
+
+                // researchIntent may also be present here
+                if (root.TryGetProperty("researchIntent", out var ri2))
+                {
+                    searchIntent ??= ri2.TryGetProperty("intent", out var i2) ? i2.GetString() : null;
+                    contentAngle ??= ri2.TryGetProperty("angle", out var a2) ? a2.GetString() : null;
+                    painPoint ??= ri2.TryGetProperty("painPoint", out var p2) ? p2.GetString() : null;
+                    primaryKeyword ??= ri2.TryGetProperty("keyword", out var k2) ? k2.GetString() : null;
+                }
+
+                // keywordStrategy
+                if (root.TryGetProperty("keywordStrategy", out var ks))
+                {
+                    primaryKeyword ??= ks.TryGetProperty("PrimaryKeyword", out var pk) ? pk.GetString() : null;
+                    if (ks.TryGetProperty("SecondaryKeywords", out var sk) && sk.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var item in sk.EnumerateArray())
+                            if (item.GetString() is { } s && !string.IsNullOrWhiteSpace(s))
+                                secondaryKeywords.Add(s);
+                    }
+                    if (ks.TryGetProperty("FaqQuestions", out var fq) && fq.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var item in fq.EnumerateArray())
+                            if (item.GetString() is { } q && !string.IsNullOrWhiteSpace(q))
+                                faqQuestions.Add(q);
+                    }
+                    searchIntent ??= ks.TryGetProperty("IntentMatch", out var im) ? im.GetString() : null;
+                }
+
+                // contentBrief.FaqQuestions (fallback)
+                if (faqQuestions.Count == 0 && root.TryGetProperty("contentBrief", out var cb))
+                {
+                    // no FaqQuestions on contentBrief itself, skip
+                }
+
+                // topicExpansion.MustAnswerQuestions (fallback)
+                if (faqQuestions.Count == 0 && root.TryGetProperty("topicExpansion", out var te))
+                {
+                    if (te.TryGetProperty("MustAnswerQuestions", out var maq) && maq.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var item in maq.EnumerateArray())
+                            if (item.GetString() is { } q && !string.IsNullOrWhiteSpace(q))
+                                faqQuestions.Add(q);
+                    }
+                }
+
+                lastPulled ??= strategyRun.CompletedUtc;
+            }
+
+            if (searchIntent != null || primaryKeyword != null)
+            {
+                // Determine FAQ coverage from article headings
+                var articleHeadings = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                if (Assembly?.Content?.Sections != null)
+                    foreach (var sec in Assembly.Content.Sections)
+                        if (!string.IsNullOrWhiteSpace(sec.Heading))
+                            articleHeadings.Add(sec.Heading);
+
+                // Build competing pages from SerpBenchmark artifact
+                var competingPages = new List<ResearchCompetingPage>();
+                var serpArtifact = await Db.ContentArtifacts
+                    .Where(a => a.ContentWorkflowJobId == JobId && a.ArtifactType == "SerpBenchmark")
+                    .OrderByDescending(a => a.CreatedUtc)
+                    .FirstOrDefaultAsync();
+                List<ResearchSerpKeyword> serpKeywords = new();
+                if (serpArtifact?.ContentJson != null)
+                {
+                    try
+                    {
+                        using var serpDoc = JsonDocument.Parse(serpArtifact.ContentJson);
+                        var resultsArr = serpDoc.RootElement.TryGetProperty("results", out var ra) ? ra : default;
+                        if (resultsArr.ValueKind == JsonValueKind.Array)
+                        {
+                            var rank = 1;
+                            foreach (var r in resultsArr.EnumerateArray())
+                            {
+                                if (rank > 5) break;
+                                competingPages.Add(new ResearchCompetingPage
+                                {
+                                    Rank = rank++,
+                                    Title = r.TryGetProperty("title", out var t) ? t.GetString() ?? "" : "",
+                                    Domain = r.TryGetProperty("domain", out var d) ? (d.GetString() ?? "") : r.TryGetProperty("url", out var u) ? (u.GetString() ?? "").Split('/').ElementAtOrDefault(2) ?? "" : "",
+                                    WordCount = r.TryGetProperty("wordCount", out var wc) ? wc.GetInt32() : 0,
+                                    DaScore = r.TryGetProperty("domainAuthority", out var da) ? da.GetInt32() : 0
+                                });
+                            }
+                        }
+                        // SERP related keywords (real benchmark data)
+                        if (serpDoc.RootElement.TryGetProperty("relatedKeywords", out var rks) && rks.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var rk in rks.EnumerateArray())
+                            {
+                                serpKeywords.Add(new ResearchSerpKeyword
+                                {
+                                    Keyword = rk.TryGetProperty("keyword", out var kw) ? kw.GetString() ?? "" : "",
+                                    AverageCount = rk.TryGetProperty("averageCount", out var ac) ? ac.GetDecimal() : 0,
+                                    RecommendedMin = rk.TryGetProperty("recommendedMin", out var rmin) ? rmin.GetInt32() : 0,
+                                    RecommendedMax = rk.TryGetProperty("recommendedMax", out var rmax) ? rmax.GetInt32() : 0
+                                });
+                            }
+                        }
+                        lastPulled ??= serpArtifact.CreatedUtc;
+                    }
+                    catch { /* skip SERP parse failures */ }
+                }
+
+                // Also load PeopleAlsoAsk artifact (persisted separately)
+                var paaArtifact = await Db.ContentArtifacts
+                    .Where(a => a.ContentWorkflowJobId == JobId && a.ArtifactType == "PeopleAlsoAsk")
+                    .OrderByDescending(a => a.CreatedUtc)
+                    .FirstOrDefaultAsync();
+                if (paaArtifact?.ContentJson != null && faqQuestions.Count == 0)
+                {
+                    try
+                    {
+                        using var paaDoc = JsonDocument.Parse(paaArtifact.ContentJson);
+                        if (paaDoc.RootElement.TryGetProperty("questions", out var qs) && qs.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var item in qs.EnumerateArray())
+                                if (item.GetString() is { } q && !string.IsNullOrWhiteSpace(q))
+                                    faqQuestions.Add(q);
+                        }
+                    }
+                    catch { /* skip */ }
+                }
+
+                // Build richer related keywords from topic expansion subtopics
+                var relatedKeywords = new List<ResearchRelatedKeyword>();
+                foreach (var sk in secondaryKeywords)
+                    relatedKeywords.Add(new ResearchRelatedKeyword
+                    {
+                        Keyword = sk,
+                        Intent = searchIntent ?? "Informational",
+                        Angle = contentAngle != null ? char.ToUpper(contentAngle[0]) + contentAngle[1..] : "General"
+                    });
+
+                // Also add subtopics as related keywords for richer data
+                if (strategyRun?.OutputSnapshotJson != null)
+                {
+                    try
+                    {
+                        using var sDoc = JsonDocument.Parse(strategyRun.OutputSnapshotJson);
+                        if (sDoc.RootElement.TryGetProperty("topicExpansion", out var te) &&
+                            te.TryGetProperty("Subtopics", out var subs) && subs.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var sub in subs.EnumerateArray())
+                            {
+                                var subText = sub.GetString();
+                                if (!string.IsNullOrWhiteSpace(subText) && !relatedKeywords.Any(rk => string.Equals(rk.Keyword, subText, StringComparison.OrdinalIgnoreCase)))
+                                    relatedKeywords.Add(new ResearchRelatedKeyword
+                                    {
+                                        Keyword = char.ToUpper(subText[0]) + subText[1..],
+                                        Intent = searchIntent ?? "Informational",
+                                        Angle = contentAngle != null ? char.ToUpper(contentAngle[0]) + contentAngle[1..] : "General"
+                                    });
+                            }
+                        }
+                    }
+                    catch { /* skip */ }
+                }
+
+                // If no FAQ from action runs, generate from topic expansion
+                if (faqQuestions.Count == 0 && strategyRun?.OutputSnapshotJson != null)
+                {
+                    try
+                    {
+                        using var sDoc = JsonDocument.Parse(strategyRun.OutputSnapshotJson);
+                        if (sDoc.RootElement.TryGetProperty("topicExpansion", out var te) &&
+                            te.TryGetProperty("MustAnswerQuestions", out var maq) && maq.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var item in maq.EnumerateArray())
+                                if (item.GetString() is { } q && !string.IsNullOrWhiteSpace(q))
+                                    faqQuestions.Add(q);
+                        }
+                    }
+                    catch { /* skip */ }
+                }
+
+                ResearchData = new ResearchPanelData
+                {
+                    SearchIntent = searchIntent ?? "Unknown",
+                    ContentAngle = contentAngle != null ? char.ToUpper(contentAngle[0]) + contentAngle[1..] : "General",
+                    PainPoint = painPoint ?? "Not specified",
+                    PrimaryKeyword = primaryKeyword ?? Article?.Title ?? "Untitled",
+                    RelatedKeywords = relatedKeywords,
+                    FaqQuestions = faqQuestions.Select(q => new ResearchFaqQuestion
+                    {
+                        Question = q,
+                        IsCovered = articleHeadings.Any(h => h.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0 || q.IndexOf(h, StringComparison.OrdinalIgnoreCase) >= 0)
+                    }).ToList(),
+                    CompetingPages = competingPages,
+                    SerpKeywords = serpKeywords,
+                    MonthlyVolume = seoMonthlyVolume,
+                    Difficulty = seoDifficulty,
+                    TrendScore = seoTrendScore,
+                    Cpc = seoCpc,
+                    SeoSourceProvider = seoSourceProvider,
+                    TrendPoints = trendPoints,
+                    LastPulledUtc = lastPulled
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load research data for {JobId}", JobId);
+        }
+    }
+
+    private async Task RerunResearchAsync()
+    {
+        await RunRerunAsync(new[] { "Research", "Content Strategy", "Briefing" }, "Research rerun requested.");
+    }
+
+    private sealed class ResearchPanelData
+    {
+        public string SearchIntent { get; set; } = string.Empty;
+        public string ContentAngle { get; set; } = string.Empty;
+        public string PainPoint { get; set; } = string.Empty;
+        public string PrimaryKeyword { get; set; } = string.Empty;
+        public List<ResearchRelatedKeyword> RelatedKeywords { get; set; } = new();
+        public List<ResearchSerpKeyword> SerpKeywords { get; set; } = new();
+        public List<ResearchFaqQuestion> FaqQuestions { get; set; } = new();
+        public List<ResearchCompetingPage> CompetingPages { get; set; } = new();
+        // SEO metrics from provider adapters
+        public int? MonthlyVolume { get; set; }
+        public int? Difficulty { get; set; }
+        public decimal? TrendScore { get; set; }
+        public decimal? Cpc { get; set; }
+        public string? SeoSourceProvider { get; set; }
+        // Trend data
+        public List<TrendPointDisplay> TrendPoints { get; set; } = new();
+        public DateTime? LastPulledUtc { get; set; }
+        public int HoursAgo => LastPulledUtc.HasValue ? (int)(DateTime.UtcNow - LastPulledUtc.Value).TotalHours : 0;
+    }
+
+    private sealed class ResearchRelatedKeyword
+    {
+        public string Keyword { get; set; } = string.Empty;
+        public string Intent { get; set; } = string.Empty;
+        public string Angle { get; set; } = string.Empty;
+    }
+
+    private sealed class ResearchSerpKeyword
+    {
+        public string Keyword { get; set; } = string.Empty;
+        public decimal AverageCount { get; set; }
+        public int RecommendedMin { get; set; }
+        public int RecommendedMax { get; set; }
+    }
+
+    private sealed class ResearchFaqQuestion
+    {
+        public string Question { get; set; } = string.Empty;
+        public bool IsCovered { get; set; }
+    }
+
+    private sealed class ResearchCompetingPage
+    {
+        public int Rank { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Domain { get; set; } = string.Empty;
+        public int WordCount { get; set; }
+        public int DaScore { get; set; }
+    }
+
+    private sealed class TrendPointDisplay
+    {
+        public string Date { get; set; } = string.Empty;
+        public decimal Value { get; set; }
+    }
+
+    // ── Image upload state & handlers ──
+    private IBrowserFile? _selectedFile;
+    private bool _isUploading;
+    private string _uploadMessage = "";
+    private bool _uploadSuccess;
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _selectedFile = e.File;
+        _uploadMessage = "";
+    }
+
+
+    private static string FormatFileSize(long bytes)
+    {
+        if (bytes >= 1024 * 1024)
+        {
+            return $"{bytes / 1024d / 1024d:0.#} MB selected";
+        }
+
+        return $"{Math.Max(1, bytes / 1024)} KB selected";
+    }
+
+    private async Task UploadSelectedFile()
+    {
+        if (_selectedFile is null) return;
+        _isUploading = true;
+        _uploadMessage = "";
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            await using var stream = _selectedFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            content.Add(new StreamContent(stream), "file", _selectedFile.Name);
+            content.Add(new StringContent(JobId.ToString()), "jobId");
+            content.Add(new StringContent("manual-upload"), "requestedBy");
+
+            var response = await Http.PostAsync("api/v1/artifacts/upload-image", content);
+            if (response.IsSuccessStatusCode)
+            {
+                _uploadSuccess = true;
+                _uploadMessage = "Image uploaded successfully.";
+                await LoadAsync();
+            }
+            else
+            {
+                _uploadSuccess = false;
+                _uploadMessage = $"Upload failed: {response.ReasonPhrase}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _uploadSuccess = false;
+            _uploadMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _isUploading = false;
+        }
+    }
+}

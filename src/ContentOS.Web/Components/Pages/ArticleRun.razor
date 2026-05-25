@@ -1,0 +1,422 @@
+@page "/article-run/{RunId:guid}"
+
+@using ContentOS.Application.Commands
+@using ContentOS.Application.DTOs
+@using ContentOS.Application.Queries
+@using MediatR
+@inject IMediator Mediator
+@inject NavigationManager Navigation
+
+<PageTitle>@(Run?.IdeaTitle ?? "Article Run") | ContentOS</PageTitle>
+
+<div class="mission-control-container kingadmin-dashboard">
+    <div class="crumb-row">
+        <span>Home</span>
+        <span class="crumb-sep">›</span>
+        <a href="/idea-pipeline">Ideas</a>
+        <span class="crumb-sep">›</span>
+        <span>Article Run</span>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <div class="workflow-task-error-banner">@Error</div>
+    }
+
+    @if (Run is null)
+    {
+        <div class="empty-card">Loading article run...</div>
+    }
+    else
+    {
+        <div class="page-header-row">
+            <div>
+                <h1 class="page-title">@(Run.IdeaTitle ?? "Untitled Article Run")</h1>
+                <p class="page-subtitle">@Run.Status • Version @Run.Version • @Run.WorkflowType pipeline</p>
+            </div>
+            <div class="actions-group">
+                <a class="btn-secondary" href="/article-runs">All Runs</a>
+                <a class="btn-primary" href="/idea-pipeline">Ideas</a>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Run.ReaderProblem))
+        {
+            <section class="dashboard-card compact-card" style="margin-bottom:1rem;">
+                <div class="editor-side-title">Reader Problem</div>
+                <p>@Run.ReaderProblem</p>
+            </section>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Run.ErrorMessage))
+        {
+            <section class="dashboard-card compact-card" style="margin-bottom:1rem; border-left:3px solid var(--danger, #ef4444);">
+                <div class="editor-side-title" style="color:var(--danger, #ef4444);">Run Error</div>
+                <p>@Run.ErrorMessage</p>
+            </section>
+        }
+
+        <!-- Article Content -->
+        @if (Draft != null)
+        {
+            <section class="dashboard-card compact-card" style="margin-bottom:1rem;">
+                <div class="widget-title">Article Preview</div>
+                <div class="editor-top-strip" style="margin-bottom:1rem;">
+                    <div class="editor-pill-row">
+                        @if (!string.IsNullOrWhiteSpace(Draft.ContentType))
+                        {
+                            <span class="editor-pill">@Draft.ContentType</span>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Draft.Slug))
+                        {
+                            <span class="editor-pill editor-pill-muted">@Draft.Slug</span>
+                        }
+                        <span class="editor-pill editor-pill-muted">@Draft.EstimatedWordCount words • @Draft.EstimatedReadTimeMinutes min read</span>
+                    </div>
+                </div>
+
+                <div class="editor-header-fields" style="margin-bottom:1.5rem;">
+                    <label class="editor-field">
+                        <span class="label">Title</span>
+                        <input value="@Draft.Title" readonly />
+                    </label>
+                    <label class="editor-field full-span">
+                        <span class="label">Summary</span>
+                        <textarea rows="2" readonly>@Draft.Summary</textarea>
+                    </label>
+                    <label class="editor-field full-span">
+                        <span class="label">Meta Description</span>
+                        <textarea rows="2" readonly>@Draft.MetaDescription</textarea>
+                    </label>
+                </div>
+
+                <article class="article-read-body article-view-body-html">
+                    @if (Draft.IntroParagraphs?.Any() == true)
+                    {
+                        foreach (var paragraph in Draft.IntroParagraphs)
+                        {
+                            <p>@paragraph</p>
+                        }
+                    }
+
+                    @if (Draft.Sections?.Any() == true)
+                    {
+                        foreach (var sec in Draft.Sections)
+                        {
+                            <div class="article-read-section">
+                                <h2>@sec.Heading</h2>
+                                @if (sec.Paragraphs?.Any() == true)
+                                {
+                                    foreach (var para in sec.Paragraphs)
+                                    {
+                                        <p>@para</p>
+                                    }
+                                }
+                            </div>
+                        }
+                    }
+
+                    @if (Draft.ConclusionParagraphs?.Any() == true)
+                    {
+                        <div class="article-read-section">
+                            <h2>Conclusion</h2>
+                            @foreach (var para in Draft.ConclusionParagraphs)
+                            {
+                                <p>@para</p>
+                            }
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(Draft.CallToAction))
+                    {
+                        <div class="article-read-section">
+                            <h2>Next Step</h2>
+                            <p>@Draft.CallToAction</p>
+                        </div>
+                    }
+                </article>
+            </section>
+        }
+        else if (Run.Status == "Completed")
+        {
+            <section class="dashboard-card compact-card" style="margin-bottom:1rem;">
+                <div class="widget-title">Article Preview</div>
+                <p class="text-center" style="padding:2rem; color:var(--text-muted, #888);">No draft content found. The pipeline completed but the Draft action produced no readable output.</p>
+            </section>
+        }
+
+        <!-- QA Results -->
+        @if (QaResult != null)
+        {
+            <section class="dashboard-card compact-card qa-review-banner article-review-summary-band" style="margin-bottom:1rem;">
+                <div class="qa-review-header">
+                    <div class="qa-review-status-group">
+                        <h2 class="page-title" style="margin-bottom:0">QA Review</h2>
+                        <span class="status-badge @(QaResult.Passed ? "status-approved" : "status-danger")">@(QaResult.Passed ? "PASSED" : "FAILED")</span>
+                    </div>
+                    @if (QaResult.Score > 0)
+                    {
+                        <div class="qa-review-score-group">
+                            <div class="optimization-score-card" style="margin-bottom:0; min-width:220px;">
+                                <div>
+                                    <div class="optimization-score-label">QA Score</div>
+                                    <div class="optimization-score-value">@QaResult.Score.ToString("0.0")<span>/10</span></div>
+                                </div>
+                                <div class="optimization-score-meter">
+                                    <div class="optimization-score-fill @(QaResult.Score >= 7 ? "optimization-score-strong" : QaResult.Score >= 5 ? "optimization-score-medium" : "optimization-score-weak")" style="width:@($"{Math.Min(100, QaResult.Score * 10)}%")"></div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+                @if (QaResult.Feedback?.Any() == true)
+                {
+                    <div class="qa-review-feedback" style="margin-top:1rem;">
+                        <div class="editor-side-title">QA Feedback</div>
+                        <ul class="artifact-list">
+                            @foreach (var item in QaResult.Feedback)
+                            {
+                                <li>@item</li>
+                            }
+                        </ul>
+                    </div>
+                }
+                @if (QaResult.Failures?.Any() == true)
+                {
+                    <div class="qa-review-failures" style="margin-top:0.5rem;">
+                        <div class="editor-side-title" style="color:var(--danger, #ef4444)">Hard Rule Failures</div>
+                        <ul class="artifact-list">
+                            @foreach (var item in QaResult.Failures)
+                            {
+                                <li style="color:var(--danger, #ef4444)">@item</li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </section>
+        }
+
+        <!-- Pipeline Progress -->
+        <section class="dashboard-card compact-card">
+            <div class="widget-title">Pipeline Progress</div>
+            <table class="architect-table compact-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Action</th>
+                        <th>Status</th>
+                        <th>Started</th>
+                        <th>Completed</th>
+                        <th>Retries</th>
+                        <th>Error</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var action in Run.Actions.OrderBy(a => a.Order))
+                    {
+                        <tr>
+                            <td>@action.Order</td>
+                            <td><strong>@action.Name</strong></td>
+                            <td>
+                                <span class="status-badge @(action.Status == "Completed" ? "status-approved" : action.Status == "Failed" ? "status-danger" : action.Status == "InProgress" ? "status-pending" : "status-pending")">
+                                    @action.Status
+                                </span>
+                            </td>
+                            <td>@(action.StartedUtc?.ToString("MMM dd HH:mm") ?? "—")</td>
+                            <td>@(action.CompletedUtc?.ToString("MMM dd HH:mm") ?? "—")</td>
+                            <td>@action.RetryCount / @action.MaxRetry</td>
+                            <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="@action.ErrorMessage">@(action.ErrorMessage ?? "—")</td>
+                            <td>
+                                @if (action.Status == "Failed" && action.RetryCount < action.MaxRetry)
+                                {
+                                    <button class="btn-secondary" @onclick="() => RetryActionAsync(action.Id)" disabled="@IsRetrying">Retry</button>
+                                }
+                                else if (action.Status == "Completed" && !string.IsNullOrEmpty(action.OutputSnapshotJson))
+                                {
+                                    <button class="btn-link" @onclick="() => ShowOutput(action)">View Raw</button>
+                                }
+                            </td>
+                        </tr>
+                        @foreach (var step in action.Steps.OrderBy(s => s.Order))
+                        {
+                            <tr style="background:var(--surface-secondary, #f8f9fa);">
+                                <td></td>
+                                <td style="padding-left:2rem;">↳ @step.Name</td>
+                                <td>
+                                    <span class="status-badge @(step.Status == "Completed" ? "status-approved" : step.Status == "Failed" ? "status-danger" : "status-pending")" style="font-size:0.75rem;">
+                                        @step.Status
+                                    </span>
+                                </td>
+                                <td>@(step.StartedUtc?.ToString("HH:mm") ?? "—")</td>
+                                <td>@(step.CompletedUtc?.ToString("HH:mm") ?? "—")</td>
+                                <td colspan="3"></td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </section>
+
+        @if (SelectedOutput != null)
+        {
+            <section class="dashboard-card compact-card" style="margin-top:1rem;">
+                <div class="widget-title">Raw Output: @SelectedOutput.Name</div>
+                <pre style="white-space:pre-wrap; word-break:break-word; max-height:400px; overflow:auto; background:var(--surface-secondary, #f8f9fa); padding:1rem; border-radius:6px; font-size:0.85rem;">@FormatOutput(SelectedOutput.OutputSnapshotJson)</pre>
+                <button class="btn-secondary" style="margin-top:0.5rem;" @onclick="() => SelectedOutput = null">Close</button>
+            </section>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public Guid RunId { get; set; }
+
+    private WorkflowDefinitionRunDto? Run;
+    private WorkflowActionRunDto? SelectedOutput;
+    private DraftContent? Draft;
+    private QaSummary? QaResult;
+    private string Error = string.Empty;
+    private bool IsRetrying;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        Error = string.Empty;
+        try
+        {
+            Run = await Mediator.Send(new GetWorkflowDefinitionRunQuery(RunId));
+            if (Run is null)
+            {
+                Error = "Workflow run not found.";
+                return;
+            }
+
+            // Parse Draft action output into readable content
+            var draftAction = Run.Actions.FirstOrDefault(a => a.Name.Equals("Draft", StringComparison.OrdinalIgnoreCase));
+            if (draftAction?.OutputSnapshotJson != null)
+            {
+                Draft = ParseJson<DraftContent>(draftAction.OutputSnapshotJson);
+            }
+
+            // Parse QA action output
+            var qaAction = Run.Actions.FirstOrDefault(a => a.Name.Equals("QA", StringComparison.OrdinalIgnoreCase) || a.Name.Contains("QA", StringComparison.OrdinalIgnoreCase));
+            if (qaAction?.OutputSnapshotJson != null)
+            {
+                QaResult = ParseQaResult(qaAction.OutputSnapshotJson);
+            }
+        }
+        catch (Exception ex)
+        {
+            Error = $"Failed to load run: {ex.Message}";
+        }
+    }
+
+    private async Task RetryActionAsync(Guid actionId)
+    {
+        IsRetrying = true;
+        Error = string.Empty;
+        try
+        {
+            await Mediator.Send(new RetryWorkflowActionRunCommand(RunId, actionId, "Eric"));
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Error = $"Retry failed: {ex.Message}";
+        }
+        finally
+        {
+            IsRetrying = false;
+        }
+    }
+
+    private void ShowOutput(WorkflowActionRunDto action)
+    {
+        SelectedOutput = action;
+    }
+
+    private static string FormatOutput(string? json)
+    {
+        if (string.IsNullOrEmpty(json)) return "(empty)";
+        try
+        {
+            var doc = System.Text.Json.JsonDocument.Parse(json);
+            return System.Text.Json.JsonSerializer.Serialize(doc, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            return json;
+        }
+    }
+
+    private static T? ParseJson<T>(string json) where T : class
+    {
+        if (string.IsNullOrWhiteSpace(json) || json == "{}") return null;
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<T>(json, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch { return null; }
+    }
+
+    private QaSummary? ParseQaResult(string json)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            var score = root.TryGetProperty("OverallScore", out var s) ? s.GetDouble() : 0;
+            var passed = root.TryGetProperty("Passed", out var p) ? p.GetBoolean()
+                : root.TryGetProperty("Status", out var st) && st.GetString() == "Pass";
+
+            var feedback = new List<string>();
+            var failures = new List<string>();
+
+            if (root.TryGetProperty("Recommendations", out var recs))
+                foreach (var r in recs.EnumerateArray()) feedback.Add(r.GetString() ?? "");
+            if (root.TryGetProperty("HardRuleFailures", out var fails))
+                foreach (var f in fails.EnumerateArray()) failures.Add(f.GetString() ?? "");
+            if (root.TryGetProperty("Issues", out var issues))
+                foreach (var i in issues.EnumerateArray()) feedback.Add(i.GetString() ?? "");
+
+            return new QaSummary { Score = score, Passed = passed, Feedback = feedback, Failures = failures };
+        }
+        catch { return null; }
+    }
+
+    // Parsed draft content model
+    private class DraftContent
+    {
+        public string Title { get; set; } = "";
+        public string Slug { get; set; } = "";
+        public string Summary { get; set; } = "";
+        public string MetaDescription { get; set; } = "";
+        public string ContentType { get; set; } = "";
+        public int EstimatedWordCount { get; set; }
+        public int EstimatedReadTimeMinutes { get; set; }
+        public List<string>? IntroParagraphs { get; set; }
+        public List<DraftSection>? Sections { get; set; }
+        public List<string>? ConclusionParagraphs { get; set; }
+        public string? CallToAction { get; set; }
+    }
+
+    private class DraftSection
+    {
+        public string Heading { get; set; } = "";
+        public List<string>? Paragraphs { get; set; }
+    }
+
+    private class QaSummary
+    {
+        public double Score { get; set; }
+        public bool Passed { get; set; }
+        public List<string> Feedback { get; set; } = new();
+        public List<string> Failures { get; set; } = new();
+    }
+}

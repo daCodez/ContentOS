@@ -1,0 +1,115 @@
+is_global = true
+build_property.TargetFramework = net10.0
+build_property.TargetFrameworkIdentifier = .NETCoreApp
+build_property.TargetFrameworkVersion = v10.0
+build_property.TargetPlatformMinVersion = 
+build_property.UsingMicrosoftNETSdkWeb = 
+build_property.ProjectTypeGuids = 
+build_property.InvariantGlobalization = 
+build_property.PlatformNeutralAssembly = 
+build_property.EnforceExtendedAnalyzerRules = 
+build_property._SupportedPlatformList = Linux,macOS,Windows,browser
+build_property.RootNamespace = SlateKit
+build_property.RootNamespace = SlateKit
+build_property.ProjectDir = /home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = 
+build_property.RazorLangVersion = 9.0
+build_property.SupportLocalizedComponentNames = 
+build_property.GenerateRazorMetadataSourceChecksumAttributes = 
+build_property.MSBuildProjectDirectory = /home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit
+build_property._RazorSourceGeneratorDebug = 
+build_property.EffectiveAnalysisLevelStyle = 10.0
+build_property.EnableCodeStyleSeverity = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/AvatarStack.razor]
+build_metadata.AdditionalFiles.TargetPath = QXZhdGFyU3RhY2sucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/ChatComposer.razor]
+build_metadata.AdditionalFiles.TargetPath = Q2hhdENvbXBvc2VyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/CommandPalette.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tbWFuZFBhbGV0dGUucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/DataTable.razor]
+build_metadata.AdditionalFiles.TargetPath = RGF0YVRhYmxlLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/DatePicker.razor]
+build_metadata.AdditionalFiles.TargetPath = RGF0ZVBpY2tlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/Dialog.razor]
+build_metadata.AdditionalFiles.TargetPath = RGlhbG9nLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/DropdownMenu.razor]
+build_metadata.AdditionalFiles.TargetPath = RHJvcGRvd25NZW51LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/HoverCard.razor]
+build_metadata.AdditionalFiles.TargetPath = SG92ZXJDYXJkLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/InlineNotice.razor]
+build_metadata.AdditionalFiles.TargetPath = SW5saW5lTm90aWNlLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/InputGroup.razor]
+build_metadata.AdditionalFiles.TargetPath = SW5wdXRHcm91cC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/LabelDivider.razor]
+build_metadata.AdditionalFiles.TargetPath = TGFiZWxEaXZpZGVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/PaymentCard.razor]
+build_metadata.AdditionalFiles.TargetPath = UGF5bWVudENhcmQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/Popover.razor]
+build_metadata.AdditionalFiles.TargetPath = UG9wb3Zlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/RangeSlider.razor]
+build_metadata.AdditionalFiles.TargetPath = UmFuZ2VTbGlkZXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/SearchWithCount.razor]
+build_metadata.AdditionalFiles.TargetPath = U2VhcmNoV2l0aENvdW50LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/SelectList.razor]
+build_metadata.AdditionalFiles.TargetPath = U2VsZWN0TGlzdC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/Sheet.razor]
+build_metadata.AdditionalFiles.TargetPath = U2hlZXQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/SkeletonLoader.razor]
+build_metadata.AdditionalFiles.TargetPath = U2tlbGV0b25Mb2FkZXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/StatusPills.razor]
+build_metadata.AdditionalFiles.TargetPath = U3RhdHVzUGlsbHMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/SuccessBanner.razor]
+build_metadata.AdditionalFiles.TargetPath = U3VjY2Vzc0Jhbm5lci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/ToggleSwitch.razor]
+build_metadata.AdditionalFiles.TargetPath = VG9nZ2xlU3dpdGNoLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/Tooltip.razor]
+build_metadata.AdditionalFiles.TargetPath = VG9vbHRpcC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/_Imports.razor]
+build_metadata.AdditionalFiles.TargetPath = X0ltcG9ydHMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 

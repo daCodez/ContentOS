@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Import Project="$(NuGetPackageRoot)sqlitepclraw.lib.e_sqlite3/2.1.11/buildTransitive/net9.0/SQLitePCLRaw.lib.e_sqlite3.targets" Condition="Exists('$(NuGetPackageRoot)sqlitepclraw.lib.e_sqlite3/2.1.11/buildTransitive/net9.0/SQLitePCLRaw.lib.e_sqlite3.targets')" />
+    <Import Project="$(NuGetPackageRoot)microsoft.extensions.telemetry.abstractions/9.0.0/buildTransitive/net8.0/Microsoft.Extensions.Telemetry.Abstractions.targets" Condition="Exists('$(NuGetPackageRoot)microsoft.extensions.telemetry.abstractions/9.0.0/buildTransitive/net8.0/Microsoft.Extensions.Telemetry.Abstractions.targets')" />
+    <Import Project="$(NuGetPackageRoot)microsoft.extensions.http.resilience/9.0.0/buildTransitive/net8.0/Microsoft.Extensions.Http.Resilience.targets" Condition="Exists('$(NuGetPackageRoot)microsoft.extensions.http.resilience/9.0.0/buildTransitive/net8.0/Microsoft.Extensions.Http.Resilience.targets')" />
+    <Import Project="$(NuGetPackageRoot)microsoft.aspnetcore.app.internal.assets/10.0.7/buildTransitive/Microsoft.AspNetCore.App.Internal.Assets.targets" Condition="Exists('$(NuGetPackageRoot)microsoft.aspnetcore.app.internal.assets/10.0.7/buildTransitive/Microsoft.AspNetCore.App.Internal.Assets.targets')" />
+    <Import Project="$(NuGetPackageRoot)aspire.hosting/13.2.4/buildTransitive/net8.0/Aspire.Hosting.targets" Condition="Exists('$(NuGetPackageRoot)aspire.hosting/13.2.4/buildTransitive/net8.0/Aspire.Hosting.targets')" />
+  </ImportGroup>
+</Project>

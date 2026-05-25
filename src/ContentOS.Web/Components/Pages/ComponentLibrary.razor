@@ -1,0 +1,366 @@
+@page "/component-library"
+@using SlateKit
+@using static SlateKit.CommandPalette
+@using static SlateKit.HoverCard
+@using static SlateKit.Popover
+@using static SlateKit.SelectList
+
+<PageTitle>Component Library | ContentOS</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Component Library</h1>
+        <p class="page-description">Reference sheet for generated UI components. This page is intentionally static so visual differences are easy to spot.</p>
+    </div>
+    <div class="header-actions">
+        <a class="btn btn-outline" href="/">Back to dashboard</a>
+    </div>
+</div>
+
+<section class="component-page-note">
+    <div class="component-page-note-title">Design QA surface</div>
+    <div class="component-page-note-copy">Use this page to compare the real rendered components against your approved screenshots before they are used elsewhere.</div>
+</section>
+
+<div class="component-library-layout">
+    <aside class="component-library-nav">
+        <a href="#dashboard-cards">Dashboard cards</a>
+        <a href="#optimization-gauge">Optimization gauge</a>
+        <a href="#upload">Upload component</a>
+        <a href="#buttons-badges">Buttons & badges</a>
+        <a href="#forms">Forms</a>
+        <a href="#tables">Tables</a>
+        <a href="#overlays">Overlays</a>
+        <a href="#content-blocks">Content blocks</a>
+        <a href="#loading-empty">Loading & empty states</a>
+    </aside>
+
+    <main class="component-library-main">
+        <ComponentSection Id="dashboard-cards" Title="Dashboard cards" Description="The main dashboard stat cards generated for the ContentOS home page.">
+            <div class="stat-trend-grid component-demo-tight">
+                <StatTrendCard Title="Articles Published" Value="38" Delta="↑ 12%" DeltaTone="positive" Subtitle="vs. previous 7 days" Icon="✓" Tone="green" Points="@PublishedTrend" />
+                <StatTrendCard Title="Avg SEO Score" Value="84" Delta="↑ 3" DeltaTone="positive" Subtitle="Trending up steadily" Icon="⌕" Tone="slate" Points="@SeoTrend" />
+                <StatTrendCard Title="Failure Rate" Value="12" Unit="%" Delta="↑ 4%" DeltaTone="negative" Subtitle="Needs attention" Icon="△" Tone="red" Points="@FailureTrend" />
+                <StatTrendCard Title="Avg Time To Publish" Value="3.2" Unit="hr" Delta="− flat" DeltaTone="neutral" Subtitle="From idea to published" Icon="◷" Tone="muted" Points="@TimeTrend" />
+            </div>
+        </ComponentSection>
+
+        <ComponentSection Id="optimization-gauge" Title="Optimization gauge" Description="Reusable 0–100 optimization score gauge with five zones, animated needle, size variants, card wrapper, and bare mode.">
+            <div class="component-demo-stack">
+                <div class="gauge-card" style="max-width:340px">
+                    <div class="gauge-card-head">
+                        <div class="gauge-card-title">SEO Score</div>
+                        <div class="gauge-card-sub">12s ago</div>
+                    </div>
+                    <OptimizationGauge Score="84" Size="md" Label="Good — ready for review" AnimateOnLoad="true" />
+                </div>
+
+                <div class="component-preview-card">
+                    <div class="component-preview-title">Size variants</div>
+                    <div class="gauge-demo-grid">
+                        <div style="display:flex;flex-direction:column;align-items:center">
+                            <OptimizationGauge Score="62" Size="sm" Label="Needs work" />
+                            <div class="demo-label">.size-sm</div>
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:center">
+                            <OptimizationGauge Score="84" Size="md" Label="Good — ready for review" />
+                            <div class="demo-label">.size-md</div>
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:center">
+                            <OptimizationGauge Score="92" Size="lg" Label="Excellent — publish ready" />
+                            <div class="demo-label">.size-lg</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="component-preview-card">
+                    <div class="component-preview-title">Score states</div>
+                    <div class="gauge-demo-grid-3">
+                        <div style="display:flex;flex-direction:column;align-items:center"><OptimizationGauge Score="18" Size="sm" Label="Critical" /><div class="demo-label">18 / Critical</div></div>
+                        <div style="display:flex;flex-direction:column;align-items:center"><OptimizationGauge Score="35" Size="sm" Label="Poor" /><div class="demo-label">35 / Poor</div></div>
+                        <div style="display:flex;flex-direction:column;align-items:center"><OptimizationGauge Score="52" Size="sm" Label="Average" /><div class="demo-label">52 / Average</div></div>
+                        <div style="display:flex;flex-direction:column;align-items:center"><OptimizationGauge Score="74" Size="sm" Label="Good" /><div class="demo-label">74 / Good</div></div>
+                        <div style="display:flex;flex-direction:column;align-items:center"><OptimizationGauge Score="91" Size="sm" Label="Excellent" /><div class="demo-label">91 / Excellent</div></div>
+                        <div style="display:flex;flex-direction:column;align-items:center"><OptimizationGauge Score="100" Size="sm" Label="Perfect" /><div class="demo-label">100 / Perfect</div></div>
+                    </div>
+                </div>
+
+                <div class="gauge-use-case-row">
+                    <div class="gauge-card"><div class="gauge-card-head"><div class="gauge-card-title">SEO Score</div><div class="gauge-card-sub">12s ago</div></div><OptimizationGauge Score="84" Size="md" Label="Good" /></div>
+                    <div class="gauge-card"><div class="gauge-card-head"><div class="gauge-card-title">QA Score</div><div class="gauge-card-sub">3 min ago</div></div><OptimizationGauge Score="92" Size="md" Label="Excellent" /></div>
+                    <div class="gauge-card"><div class="gauge-card-head"><div class="gauge-card-title">Readability</div><div class="gauge-card-sub">just now</div></div><OptimizationGauge Score="72" Size="md" Label="Easy to read" /></div>
+                    <div class="gauge-card"><div class="gauge-card-head"><div class="gauge-card-title">Authority</div><div class="gauge-card-sub">1 hr ago</div></div><OptimizationGauge Score="61" Size="md" Label="Needs work" /></div>
+                </div>
+
+                <div class="component-preview-card">
+                    <div class="component-preview-title">Bare variant</div>
+                    <div class="gauge-demo-grid">
+                        <div style="display:flex;flex-direction:column;align-items:center"><OptimizationGauge Score="84" Size="sm" Bare="true" /><div class="demo-label">Bare · sm</div></div>
+                        <div style="display:flex;flex-direction:column;align-items:center"><OptimizationGauge Score="84" Size="md" Bare="true" /><div class="demo-label">Bare · md</div></div>
+                    </div>
+                </div>
+            </div>
+        </ComponentSection>
+
+        <ComponentSection Id="upload" Title="Upload component" Description="Approved article image upload dropzone used in Article view → Media.">
+            <div class="media-upload-card component-demo-upload">
+                <div class="media-upload-head">
+                    <div>
+                        <div class="media-upload-eyebrow">Media Library</div>
+                        <div class="media-upload-title">Upload article image</div>
+                        <div class="media-upload-subtitle">Drop a JPG, PNG, GIF, or WebP image here, or browse from your device.</div>
+                    </div>
+                    <span class="media-upload-badge">Local storage</span>
+                </div>
+                <div class="media-upload-dropzone">
+                    <input class="media-upload-input" type="file" accept="image/*" />
+                    <div class="media-upload-icon">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    </div>
+                    <div class="media-upload-copy">
+                        <strong>Choose an image or drag it here</strong>
+                        <span>Supports JPG, PNG, GIF, WebP up to 10 MB</span>
+                    </div>
+                    <div class="media-upload-action">Browse files</div>
+                </div>
+                <div class="media-upload-footer">
+                    <div class="media-upload-types"><span>JPG</span><span>PNG</span><span>WEBP</span><span>GIF</span></div>
+                    <button class="btn btn-primary btn-sm" type="button">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        Upload image
+                    </button>
+                </div>
+            </div>
+        </ComponentSection>
+
+        <ComponentSection Id="buttons-badges" Title="Buttons & badges" Description="Core action buttons, status badges, pills, and success states.">
+            <div class="component-demo-stack">
+                <div class="component-inline-row">
+                    <button class="btn btn-primary">Primary</button>
+                    <button class="btn btn-outline">Outline</button>
+                    <button class="btn btn-ghost">Ghost</button>
+                    <button class="btn btn-destructive">Destructive</button>
+                    <button class="btn btn-primary btn-sm">Small</button>
+                </div>
+                <div class="component-inline-row">
+                    <span class="badge badge-running">Running</span>
+                    <span class="badge badge-review">Review</span>
+                    <span class="badge badge-ready">Ready</span>
+                    <span class="badge badge-failed">Failed</span>
+                    <span class="badge badge-published">Published</span>
+                    <span class="badge badge-outline">Outline</span>
+                </div>
+                <StatusPills>
+                    <span class="status-pill"><span class="sync-dot"></span>Syncing</span>
+                    <span class="status-pill"><span class="sync-dot ready"></span>Ready</span>
+                    <span class="status-pill"><span class="sync-dot warn"></span>Review needed</span>
+                </StatusPills>
+                <SuccessBanner Message="Article image uploaded and attached to the draft." />
+            </div>
+        </ComponentSection>
+
+        <ComponentSection Id="forms" Title="Forms" Description="Inputs, search, selectors, date controls, sliders, toggles, and composer controls.">
+            <div class="component-grid-two">
+                <div class="component-preview-card">
+                    <div class="component-preview-title">Input group</div>
+                    <InputGroup Placeholder="Article keyword" Prefix="SEO" Suffix="⌘K" Value="family budgeting" />
+                </div>
+                <div class="component-preview-card">
+                    <div class="component-preview-title">Search with count</div>
+                    <SearchWithCount Placeholder="Search articles..." ResultCountText="24 articles" SearchTerm="" />
+                </div>
+                <div class="component-preview-card">
+                    <div class="component-preview-title">Select list</div>
+                    <SelectList Items="@SelectOptions" SelectedValue="medium" Placeholder="Choose priority" />
+                </div>
+                <div class="component-preview-card">
+                    <div class="component-preview-title">Date picker</div>
+                    <DatePicker SelectedDate="@SelectedDate" Placeholder="Pick publish date" />
+                </div>
+                <div class="component-preview-card component-span-two">
+                    <RangeSlider Title="Content score target" Description="Minimum and maximum acceptable QA score." MinValue="30" MaxValue="85" />
+                </div>
+                <div class="component-preview-card">
+                    <ToggleSwitch Checked="true" Title="Auto-refresh" Description="Keep dashboard counts live." />
+                </div>
+                <div class="component-preview-card">
+                    <div class="component-preview-title">Chat composer</div>
+                    <ChatComposer Placeholder="Ask for a revision..." Message="" />
+                </div>
+            </div>
+        </ComponentSection>
+
+        <ComponentSection Id="tables" Title="Tables" Description="Generated SlateKit data table using production-like article rows.">
+            <DataTable TItem="ComponentRun" Items="@SampleRuns" Columns="@RunColumns" ShowSelectColumn="false" ShowPagination="false" EmptyMessage="No sample rows." />
+        </ComponentSection>
+
+        <ComponentSection Id="overlays" Title="Overlays" Description="Command palette, dropdowns, popovers, hover cards, dialog, and sheet surfaces.">
+            <div class="component-demo-stack">
+                <div class="component-inline-row">
+                    <button class="btn btn-outline" @onclick="OpenCommandPalette">Open command palette</button>
+                    <button class="btn btn-outline" @onclick="() => ShowDialog = true">Open dialog</button>
+                    <button class="btn btn-outline" @onclick="() => ShowSheet = true">Open sheet</button>
+                </div>
+                <div class="component-inline-row">
+                    <DropdownMenu Header="Actions">
+                        <ChildContent><button class="btn btn-outline btn-sm">Dropdown</button></ChildContent>
+                        <MenuContent>
+                            <a class="dropdown-item" href="#">View item</a>
+                            <a class="dropdown-item" href="#">Duplicate</a>
+                            <a class="dropdown-item" href="#">Archive</a>
+                        </MenuContent>
+                    </DropdownMenu>
+                    <Popover Title="Article metrics" Description="Snapshot details" Rows="@PopoverRows">
+                        <button class="btn btn-outline btn-sm">Popover</button>
+                    </Popover>
+                    <HoverCard Title="Budgeting article" Snippet="Ready for final editorial QA." Status="Ready" MetaItems="@HoverMeta">
+                        <button class="btn btn-outline btn-sm">Hover card</button>
+                    </HoverCard>
+                    <Tooltip Text="Tooltip text exactly as rendered by SlateKit.">
+                        <button class="btn btn-outline btn-sm">Tooltip</button>
+                    </Tooltip>
+                </div>
+                <CommandPalette @ref="CommandPaletteRef" Items="@CommandItems" Placeholder="Search component actions..." />
+                <Dialog IsOpen="@ShowDialog" Title="Confirm component" Description="This is the standard dialog surface." ConfirmButtonText="Confirm" OnCancelCallback="CloseDialog" OnConfirmCallback="CloseDialog">
+                    <p>This modal is included here so spacing, overlay, footer, and button styles can be inspected.</p>
+                </Dialog>
+                <Sheet IsOpen="@ShowSheet" Title="Component sheet" Description="Side panel layout reference." ConfirmButtonText="Save" OnCancelCallback="CloseSheet" OnConfirmCallback="CloseSheet">
+                    <InlineNotice Title="Sheet content" Description="Use this to compare the actual slide-over surface." />
+                </Sheet>
+            </div>
+        </ComponentSection>
+
+        <ComponentSection Id="content-blocks" Title="Content blocks" Description="Cards, notices, avatar stacks, dividers, and payment-style containers.">
+            <div class="component-grid-two">
+                <PaymentCard Title="Payment card shell" Description="Reusable card container with footer." ContainerStyle="max-width:none">
+                    <ChildContent>
+                        <div class="payment-card-section-title">Plan details</div>
+                        <div class="payment-card-section-desc">This content shows the body spacing and typography of the card.</div>
+                    </ChildContent>
+                    <FooterContent>
+                        <button class="btn btn-outline btn-sm">Cancel</button>
+                        <button class="btn btn-primary btn-sm">Save</button>
+                    </FooterContent>
+                </PaymentCard>
+                <div class="component-preview-card">
+                    <div class="component-preview-title">Avatar stack</div>
+                    <AvatarStack>
+                        <div class="avatar gradient-1"><span class="avatar-initial">EA</span></div>
+                        <div class="avatar gradient-2"><span class="avatar-initial">QA</span></div>
+                        <div class="avatar gradient-3"><span class="avatar-initial">SEO</span></div>
+                        <div class="avatar gradient-4"><span class="avatar-initial">ED</span></div>
+                    </AvatarStack>
+                    <InlineNotice Title="Inline notice" Description="Compact notice block with optional action." ShowActionButton="true" ActionButtonText="Review" />
+                </div>
+                <div class="component-preview-card component-span-two">
+                    <LabelDivider Label="Generated divider label" />
+                </div>
+            </div>
+        </ComponentSection>
+
+        <ComponentSection Id="loading-empty" Title="Loading & empty states" Description="Skeleton loaders and empty-state composition.">
+            <div class="component-grid-two">
+                <div class="component-preview-card">
+                    <div class="component-preview-title">Skeleton loaders</div>
+                    <div class="component-demo-stack compact">
+                        <SkeletonLoader Width="220" Height="18" />
+                        <SkeletonLoader Width="340" Height="12" />
+                        <SkeletonLoader Width="180" Height="12" />
+                    </div>
+                </div>
+                <div class="component-preview-card">
+                    <div class="research-empty compact-empty">
+                        <div class="research-empty-icon">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        </div>
+                        <div class="research-empty-title">No generated images found</div>
+                        <div class="research-empty-desc">Empty state pulled from the article media panel.</div>
+                    </div>
+                </div>
+            </div>
+        </ComponentSection>
+    </main>
+</div>
+
+@code {
+    private CommandPalette? CommandPaletteRef;
+    private bool ShowDialog;
+    private bool ShowSheet;
+    private DateTime? SelectedDate = new DateTime(2026, 4, 28);
+    private IReadOnlyList<int> PublishedTrend { get; } = new[] { 12, 16, 20, 18, 28, 38, 35, 46, 58, 55, 66, 72 };
+    private IReadOnlyList<int> SeoTrend { get; } = new[] { 45, 42, 52, 49, 58, 55, 70, 66, 76, 80, 84, 88 };
+    private IReadOnlyList<int> FailureTrend { get; } = new[] { 8, 10, 8, 15, 22, 28, 31, 34, 37, 42, 48, 55 };
+    private IReadOnlyList<int> TimeTrend { get; } = new[] { 18, 24, 16, 31, 22, 36, 28, 43, 38, 51, 47, 60 };
+
+    private List<SelectOption> SelectOptions { get; } = new()
+    {
+        new() { Text = "Low priority", Value = "low" },
+        new() { Text = "Medium priority", Value = "medium" },
+        new() { Text = "High priority", Value = "high" }
+    };
+
+    private List<PopoverRow> PopoverRows { get; } = new()
+    {
+        new() { Label = "Score", Value = "92" },
+        new() { Label = "Stage", Value = "Review" },
+        new() { Label = "Owner", Value = "Editorial" }
+    };
+
+    private List<HoverCardMeta> HoverMeta { get; } = new()
+    {
+        new() { Label = "SEO", Value = "94" },
+        new() { Label = "QA", Value = "Ready" }
+    };
+
+    private List<CommandItem> CommandItems { get; } = new()
+    {
+        new("Articles", "Open article run", "↵"),
+        new("Articles", "Upload media", "U"),
+        new("Workflow", "Retry failed job", "R"),
+        new("System", "Open settings", "⌘,"),
+    };
+
+    private List<ComponentRun> SampleRuns { get; } = new()
+    {
+        new("Budgeting for families", "SEO Draft", "Ready", 94),
+        new("Best meal prep containers", "Humanize", "Running", 67),
+        new("Emergency fund guide", "QA", "Review", 88),
+    };
+
+    private List<DataTableColumn<ComponentRun>> RunColumns => new()
+    {
+        new() { Key = "title", Label = "Article", CellTemplate = r => new MarkupString($"<div class='article-cell'><div class='article-title'>{r.Title}</div><div class='article-meta'>{r.Stage}</div></div>") },
+        new() { Key = "status", Label = "Status", CellTemplate = r => new MarkupString($"<span class='badge badge-{BadgeClass(r.Status)}'>{r.Status}</span>") },
+        new() { Key = "score", Label = "Score", CellTemplate = r => new MarkupString($"<div class='rating rating-good'>{r.Score}</div>") },
+    };
+
+    private static string BadgeClass(string status) => status.ToLowerInvariant() switch
+    {
+        "running" => "running",
+        "review" => "review",
+        "ready" => "ready",
+        _ => "outline"
+    };
+
+    private async Task OpenCommandPalette()
+    {
+        if (CommandPaletteRef is not null)
+        {
+            await CommandPaletteRef.Open();
+        }
+    }
+
+    private Task CloseDialog()
+    {
+        ShowDialog = false;
+        return Task.CompletedTask;
+    }
+
+    private Task CloseSheet()
+    {
+        ShowSheet = false;
+        return Task.CompletedTask;
+    }
+
+    private sealed record ComponentRun(string Title, string Stage, string Status, int Score);
+}

@@ -1,0 +1,785 @@
+@page "/"
+
+@using ContentOS.Application.DTOs
+@using ContentOS.Application.Queries
+@using SlateKit
+@using MediatR
+@using Microsoft.AspNetCore.SignalR.Client
+@using System.Text.Json
+@inject IMediator Mediator
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject Services.ToastService Toast
+@implements IAsyncDisposable
+
+<PageTitle>Dashboard | ContentOS</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-description">Mission control for your article production pipeline.</p>
+    </div>
+    <div class="header-actions">
+        <Tooltip Text="⌘K — Search commands, ideas, articles...">
+        <button class="cmd-trigger" @onclick="OpenCommandPalette">
+            <svg class="cmd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <span class="cmd-text">Search articles, ideas, or run a command…</span>
+            <kbd>⌘K</kbd>
+        </button>
+        </Tooltip>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Error))
+{
+    <div class="alert alert-warning" style="margin:0 0 18px">
+        <div class="alert-content">
+            <div class="alert-title">Dashboard data partially unavailable</div>
+            <div class="alert-description">@Error</div>
+        </div>
+    </div>
+}
+
+<section class="command-center">
+    <div>
+        <div class="cc-eyebrow"><span class="cc-eyebrow-dot"></span>Needs your attention</div>
+        <h2 class="cc-title">@AttentionTotal item@(AttentionTotal == 1 ? string.Empty : "s") need your attention before the next publish window.</h2>
+        <ul class="cc-list">
+            <li class="review"><span class="cc-marker">@NeedsReviewCount</span> articles need final review</li>
+            <li class="failed"><span class="cc-marker">@FailedRuns.Count</span> jobs failed</li>
+            <li class="idea"><span class="cc-marker">@PendingIdeas.Count</span> ideas need approval</li>
+        </ul>
+    </div>
+    <div class="cc-actions">
+        <a class="btn btn-primary" href="@PrimaryAttentionHref">@PrimaryAttentionLabel <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></a>
+        <a class="btn btn-outline" @onclick="() => ShowNewIdeaSheet = true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Create New Idea</a>
+    </div>
+</section>
+
+@if (_isLoading)
+{
+    <div class="cos-metric-grid">
+        @for (var i = 0; i < 4; i++)
+        {
+            <SkeletonLoader Width="160" Height="52" />
+        }
+    </div>
+}
+else
+{
+<div class="stat-trend-grid">
+    <StatTrendCard Title="Articles Published"
+                   Value="@PublishedLast7Days.ToString()"
+                   Delta="@PublishedDeltaText"
+                   DeltaTone="@PublishedDeltaTone"
+                   Subtitle="last 7 days"
+                   Icon="✓"
+                   Tone="green"
+                   Points="@PublishedTrend" />
+    <StatTrendCard Title="Avg SEO Score"
+                   Value="@AverageSeoScoreText"
+                   Delta="@SeoDeltaText"
+                   DeltaTone="@SeoDeltaTone"
+                   Subtitle="completed article average"
+                   Icon="⌕"
+                   Tone="slate"
+                   Points="@SeoTrend" />
+    <StatTrendCard Title="Failure Rate"
+                   Value="@FailureRate.ToString()"
+                   Unit="%"
+                   Delta="@FailureDeltaText"
+                   DeltaTone="@FailureDeltaTone"
+                   Subtitle="all article runs"
+                   Icon="△"
+                   Tone="red"
+                   Points="@FailureTrend" />
+    <StatTrendCard Title="Avg Time To Publish"
+                   Value="@AveragePublishHoursText"
+                   Unit="hr"
+                   Delta="@PublishTimeDeltaText"
+                   DeltaTone="@PublishTimeDeltaTone"
+                   Subtitle="started to completed"
+                   Icon="◷"
+                   Tone="muted"
+                   Points="@TimeTrend" />
+</div>
+}
+
+<div class="grid-main">
+    <div class="col-main">
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <HoverCard Title="Article Production" Snippet="@($"{FeaturedRuns.Count()} runs")" Status="Active">
+                        <ChildContent>
+                            <div class="card-title">Article Production</div>
+                        </ChildContent>
+                    </HoverCard>
+                    <div class="card-description">Currently active items in your pipeline</div>
+                </div>
+                <div class="card-actions">
+                    <div class="tabs-list">
+                        <button class="tabs-trigger @(_statusFilter == "All" ? "active" : "")" @onclick="SetAll">All</button>
+                        <button class="tabs-trigger @(_statusFilter == "Running" ? "active" : "")" @onclick="SetRunning">Running</button>
+                        <button class="tabs-trigger @(_statusFilter == "Completed" ? "active" : "")" @onclick="SetCompleted">Completed</button>
+                        <button class="tabs-trigger @(_statusFilter == "Failed" ? "active" : "")" @onclick="SetFailed">Failed</button>
+                    </div>
+                    <DropdownMenu Header="Actions">
+                        <ChildContent>
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                        </ChildContent>
+                        <MenuContent>
+                            <a href="/article-runs" class="dropdown-item">View All Runs</a>
+                            <a href="/research-inbox" class="dropdown-item">New Idea</a>
+                            <a href="/workflow-queue" class="dropdown-item">Fix Failed</a>
+                        </MenuContent>
+                    </DropdownMenu>
+                </div>
+            </div>
+            <div class="card-content p-0">
+                @if (_isLoading)
+                {
+                    <table class="table"><tbody>@for (var i = 0; i < 4; i++) { <tr class="skeleton-row"><td><div class="skeleton-block"><div class="skeleton" style="height:14px;width:60%"></div><div class="skeleton" style="height:11px;width:35%"></div></div></td><td><div class="skeleton" style="height:12px;width:90px"></div></td><td><div class="skeleton" style="height:22px;width:80px;border-radius:999px"></div></td><td><div class="skeleton" style="height:12px;width:60px"></div></td><td><div class="skeleton" style="height:12px;width:60px"></div></td><td><div class="skeleton" style="height:28px;width:70px;border-radius:4px"></div></td></tr> }</tbody></table>
+                }
+                else
+                {
+                    <DataTable Items="@FeaturedRuns" Columns="@_tableColumns" ShowSelectColumn="false" ShowPagination="false" RowClass="@(r => IsRunStatus(r, RunStatus.Failed) ? "row-urgent" : "")" EmptyMessage="No article runs yet. Approve an idea to start the pipeline." />
+                }
+                <div class="advanced-toggle"><a href="/article-runs">⌄ Show all article runs</a></div>
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="card-header"><div><div class="card-title">Latest Ideas</div><div class="card-description">Recent additions awaiting your decision</div></div><div class="card-actions"><SearchWithCount ResultCountText="@(Ideas.Count + " ideas")" Placeholder="Search ideas..." /><a class="btn btn-ghost btn-sm" href="/idea-pipeline">View all</a></div></div>
+            <div class="card-content p-0"><div class="ideas-list">
+                @if (Ideas.Count == 0)
+                {
+                    <div class="idea-item"><div class="idea-title">No ideas yet</div><div class="idea-problem">Run research or add a new idea to populate the pipeline.</div></div>
+                }
+                else
+                {
+                    @foreach (var idea in Ideas.Take(3))
+                    {
+                        <div class="idea-item">
+                            <div class="idea-head"><div class="idea-title">@idea.IdeaTitle</div><div class="idea-score">Score @Math.Round(idea.PriorityScore)</div></div>
+                            <div class="idea-problem">@(!string.IsNullOrWhiteSpace(idea.ReaderProblem) ? idea.ReaderProblem : idea.UniquenessAngle)</div>
+                            <div class="idea-foot"><span class="badge @IdeaBadgeClass(idea.Status)">@DisplayStatus(idea.Status)</span><a class="btn @(IsApprovedIdea(idea) ? "btn-primary" : "btn-outline") btn-sm" style="margin-left:auto" href="@(IsApprovedIdea(idea) && idea.ArticleWorkflowRunId.HasValue ? $"/article/{idea.ArticleWorkflowRunId}" : "/idea-pipeline")">@(IsApprovedIdea(idea) ? "View Article" : "Review")</a></div>
+                        </div>
+                    }
+                }
+            </div></div>
+        </section>
+    </div>
+
+    <div class="col-side">
+        <section class="card">
+            <div class="card-header"><div class="card-title">Needs Attention</div><span class="badge badge-outline">@AttentionItems.Count urgent</span></div>
+            <div class="card-content p-0"><div class="attention-list">
+                @if (AttentionItems.Count == 0)
+                {
+                    <div class="attention-item"><div class="attention-title">No blockers right now</div><div class="attention-reason">The pipeline has no failed runs or pending review items.</div></div>
+                }
+                else
+                {
+                    @foreach (var item in AttentionItems.Take(3))
+                    {
+                        <div class="attention-item"><div class="attention-row"><div class="attention-icon @item.Kind">@item.Icon</div><div class="attention-body"><div class="attention-title">@item.Title</div><div class="attention-reason">@item.Reason</div></div></div><div class="attention-action"><a class="btn @item.ButtonClass btn-sm" href="@item.Href">@item.ButtonLabel</a></div></div>
+                    }
+                }
+            </div></div>
+        </section>
+
+        <section class="card">
+            <div class="card-header"><div class="card-title">Pipeline Health</div><a class="select" href="/workflow-queue">Live</a></div>
+            <div class="card-content p-0">
+                <div class="health-grid">
+                    <div><div class="health-stat-label">Completion Rate</div><div class="health-stat-value">@CompletionRate<span class="unit">%</span></div><div class="health-stat-trend up">@CompletedRuns.Count completed</div></div>
+                    <div><div class="health-stat-label">Running Now</div><div class="health-stat-value">@RunningRuns.Count</div><div class="health-stat-trend">active article runs</div></div>
+                    <div><div class="health-stat-label">Failure Rate</div><div class="health-stat-value">@FailureRate<span class="unit">%</span></div><div class="health-stat-trend down">@FailedRuns.Count failed</div></div>
+                    <div><div class="health-stat-label">Last Activity</div><div class="health-stat-value" style="font-size:18px">@RelativeTime(Runs.Select(LastActivityUtc).DefaultIfEmpty(DateTime.MinValue).Max())</div><div class="health-stat-trend">@LastCompletedTitle</div></div>
+                </div>
+                @if (FailedRuns.Count > 0)
+                {
+                    <div class="alert alert-warning"><div class="alert-content"><div class="alert-title">@FailedRuns.Count recent failure@(FailedRuns.Count == 1 ? string.Empty : "s") detected</div><div class="alert-description">Open the failed run and retry or adjust the workflow step that failed.</div></div></div>
+                }
+                <div class="health-version"><span>Active workflow</span><span class="version-tag">v1.4</span><span style="margin-left:auto">@TotalActionCount steps observed</span></div>
+            </div>
+        </section>
+
+    </div>
+</div>
+
+<Sheet IsOpen="@ShowNewIdeaSheet" Title="New Article Idea" Description="Submit a topic for research and content generation." OnCancelCallback="() => ShowNewIdeaSheet = false" ConfirmButtonText="Create Idea" ConfirmButtonClass="btn-primary" OnConfirmCallback="SubmitNewIdeaAsync">
+    <ChildContent>
+        <label class="editor-field">
+            <span class="label">Topic Title</span>
+            <input @bind="NewIdeaTitle" placeholder="e.g. Best budgeting apps for freelancers" style="width:100%" />
+        </label>
+    </ChildContent>
+</Sheet>
+
+@code {
+    [JSInvokable("OpenCommandPalette")]
+    public async Task OpenCommandPalette()
+    {
+        await JS.InvokeVoidAsync("contentOsInterop.openCommandPalette");
+    }
+    private HubConnection? _hubConnection;
+    private string _statusFilter = "All";
+    private bool ShowNewIdeaSheet = false;
+    private string NewIdeaTitle = string.Empty;
+    private List<WorkflowDefinitionRunDto> Runs { get; set; } = new();
+    private bool _isLoading = true;
+    private List<IdeaRecordDto> Ideas { get; set; } = new();
+    private string Error { get; set; } = string.Empty;
+
+    private List<DataTableColumn<WorkflowDefinitionRunDto>> _tableColumns => BuildTableColumns();
+
+    private static string RenderAction(WorkflowDefinitionRunDto r)
+    {
+        if (IsRunStatus(r, RunStatus.Completed))
+            return $"<a class=\"btn btn-primary btn-sm\" href=\"{ActionHref(r)}\">View</a>";
+        if (IsRunStatus(r, RunStatus.Failed))
+            return $"<a class=\"btn btn-destructive btn-sm\" href=\"{ActionHref(r)}\">Fix</a>";
+        return $"<button class=\"btn btn-outline btn-sm\" disabled>{StageLabel(r)}</button>";
+    }
+
+    private static List<DataTableColumn<WorkflowDefinitionRunDto>> BuildTableColumns() => new()
+    {
+        new() { Key = "Article", Label = "Article", CellTemplate = r => new MarkupString($"<div class=\"article-cell\"><div class=\"article-title\">{HtmlEncode(r.IdeaTitle ?? "Untitled")}</div><div class=\"article-meta\">{RunMeta(r)}</div></div>") },
+        new() { Key = "Progress", Label = "Progress", CellTemplate = r => new MarkupString($"<div class=\"progress-cell\">{ProgressDisplay(r)}</div>") },
+        new() { Key = "SEO", Label = "SEO", CellTemplate = r => SeoRating(r) },
+        new() { Key = "QA", Label = "QA", CellTemplate = r => QaRating(r) },
+        new() { Key = "Updated", Label = "Updated", IsSortable = true, SortValue = r => r.CompletedUtc ?? DateTime.MinValue, CellTemplate = r => new MarkupString($"<span class=\"updated-cell\">{RelativeTime(LastActivityUtc(r))}</span>") },
+        new() { Key = "Action", Label = "", CellTemplate = r => new MarkupString(RenderAction(r)) },
+    };
+
+    private static string HtmlEncode(string s) => System.Net.WebUtility.HtmlEncode(s);
+
+    private IEnumerable<WorkflowDefinitionRunDto> FeaturedRuns
+    {
+        get
+        {
+            var filtered = _statusFilter switch
+            {
+                "Failed" => Runs.Where(r => IsRunStatus(r, RunStatus.Failed)),
+                "Completed" => Runs.Where(r => IsRunStatus(r, RunStatus.Completed)),
+                "Running" => Runs.Where(r => IsRunStatus(r, RunStatus.InProgress)),
+                _ => Runs
+            };
+            return filtered
+                .OrderBy(r => IsRunStatus(r, RunStatus.Failed) ? 0 : IsRunStatus(r, RunStatus.InProgress) ? 1 : 2)
+                .ThenByDescending(LastActivityUtc)
+                .Take(6);
+        }
+    }
+
+    private List<WorkflowDefinitionRunDto> FailedRuns => Runs.Where(r => IsRunStatus(r, RunStatus.Failed)).ToList();
+    private List<WorkflowDefinitionRunDto> RunningRuns => Runs.Where(r => IsRunStatus(r, RunStatus.InProgress)).ToList();
+    private List<WorkflowDefinitionRunDto> CompletedRuns => Runs.Where(r => IsRunStatus(r, RunStatus.Completed)).ToList();
+    private List<IdeaRecordDto> PendingIdeas => Ideas.Where(i => IsPendingIdea(i)).ToList();
+    private int NeedsReviewCount => CompletedRuns.Count;
+    private int PublishedLast7Days => Runs.Count(r => IsRunStatus(r, RunStatus.Completed) && LastActivityUtc(r) >= DateTime.UtcNow.Date.AddDays(-6));
+    private int PublishedPrevious7Days => Runs.Count(r => IsRunStatus(r, RunStatus.Completed) && LastActivityUtc(r) >= DateTime.UtcNow.Date.AddDays(-13) && LastActivityUtc(r) < DateTime.UtcNow.Date.AddDays(-6));
+    private string PublishedDeltaText => FormatSignedDelta(PublishedLast7Days - PublishedPrevious7Days);
+    private string PublishedDeltaTone => DeltaTone(PublishedLast7Days - PublishedPrevious7Days, higherIsBetter: true);
+    private int? AverageSeoScore => AverageScore(Runs.Select(ExtractSeoScore));
+    private string AverageSeoScoreText => AverageSeoScore?.ToString() ?? "—";
+    private int? RecentSeoScore => AverageScore(Runs.Where(r => LastActivityUtc(r) >= DateTime.UtcNow.Date.AddDays(-6)).Select(ExtractSeoScore));
+    private int? PreviousSeoScore => AverageScore(Runs.Where(r => LastActivityUtc(r) >= DateTime.UtcNow.Date.AddDays(-13) && LastActivityUtc(r) < DateTime.UtcNow.Date.AddDays(-6)).Select(ExtractSeoScore));
+    private string SeoDeltaText => FormatNullableDelta(RecentSeoScore, PreviousSeoScore);
+    private string SeoDeltaTone => DeltaTone((RecentSeoScore ?? 0) - (PreviousSeoScore ?? RecentSeoScore ?? 0), higherIsBetter: true);
+    private int RecentFailureRate => Rate(Runs.Count(r => LastActivityUtc(r) >= DateTime.UtcNow.Date.AddDays(-6) && IsRunStatus(r, RunStatus.Failed)), Runs.Count(r => LastActivityUtc(r) >= DateTime.UtcNow.Date.AddDays(-6)));
+    private int PreviousFailureRate => Rate(Runs.Count(r => LastActivityUtc(r) >= DateTime.UtcNow.Date.AddDays(-13) && LastActivityUtc(r) < DateTime.UtcNow.Date.AddDays(-6) && IsRunStatus(r, RunStatus.Failed)), Runs.Count(r => LastActivityUtc(r) >= DateTime.UtcNow.Date.AddDays(-13) && LastActivityUtc(r) < DateTime.UtcNow.Date.AddDays(-6)));
+    private string FailureDeltaText => FormatSignedDelta(RecentFailureRate - PreviousFailureRate, suffix: "%");
+    private string FailureDeltaTone => DeltaTone(RecentFailureRate - PreviousFailureRate, higherIsBetter: false);
+    private double? AveragePublishHours => AverageDurationHours(CompletedRuns);
+    private string AveragePublishHoursText => AveragePublishHours.HasValue ? AveragePublishHours.Value.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) : "—";
+    private double? RecentPublishHours => AverageDurationHours(CompletedRuns.Where(r => LastActivityUtc(r) >= DateTime.UtcNow.Date.AddDays(-6)));
+    private double? PreviousPublishHours => AverageDurationHours(CompletedRuns.Where(r => LastActivityUtc(r) >= DateTime.UtcNow.Date.AddDays(-13) && LastActivityUtc(r) < DateTime.UtcNow.Date.AddDays(-6)));
+    private string PublishTimeDeltaText => FormatNullableDelta(RecentPublishHours, PreviousPublishHours, suffix: "hr");
+    private string PublishTimeDeltaTone => DeltaTone((RecentPublishHours ?? 0) - (PreviousPublishHours ?? RecentPublishHours ?? 0), higherIsBetter: false);
+    private IReadOnlyList<int> PublishedTrend => BuildDailyTrend(r => IsRunStatus(r, RunStatus.Completed) ? 1 : 0, average: false);
+    private IReadOnlyList<int> SeoTrend => BuildDailyScoreTrend(ExtractSeoScore);
+    private IReadOnlyList<int> FailureTrend => BuildDailyFailureRateTrend();
+    private IReadOnlyList<int> TimeTrend => BuildPublishDurationTrend();
+    private int AttentionTotal => FailedRuns.Count + NeedsReviewCount + PendingIdeas.Count;
+    private int CompletionRate => Runs.Count == 0 ? 0 : (int)Math.Round(CompletedRuns.Count * 100m / Runs.Count);
+    private int FailureRate => Runs.Count == 0 ? 0 : (int)Math.Round(FailedRuns.Count * 100m / Runs.Count);
+    private int TotalActionCount => Runs.SelectMany(r => r.Actions).Select(a => a.Name).Distinct().Count();
+    private string PublishedOrCompletedLabel => Runs.Count == 0 ? "no runs yet" : $"{CompletionRate}% completion rate";
+    private string LastCompletedTitle => CompletedRuns.OrderByDescending(LastActivityUtc).FirstOrDefault()?.IdeaTitle ?? "No completed articles yet";
+    private string PrimaryAttentionHref => FailedRuns.FirstOrDefault() is { } failed ? $"/article-run/{failed.Id}" : CompletedRuns.FirstOrDefault() is { } complete ? $"/article/{complete.Id}" : "/idea-pipeline";
+    private string PrimaryAttentionLabel => FailedRuns.Any() ? "Fix Failed Job" : CompletedRuns.Any() ? "View Next Item" : PendingIdeas.Any() ? "Review Ideas" : "Open Pipeline";
+    private List<AttentionItem> AttentionItems => BuildAttentionItems();
+
+    private IReadOnlyList<int> BuildDailyTrend(Func<WorkflowDefinitionRunDto, int> valueSelector, bool average)
+    {
+        var start = DateTime.UtcNow.Date.AddDays(-11);
+        return Enumerable.Range(0, 12)
+            .Select(offset =>
+            {
+                var day = start.AddDays(offset);
+                var runs = Runs.Where(r => LastActivityUtc(r).Date == day).ToList();
+                if (runs.Count == 0) return 0;
+                return average ? (int)Math.Round(runs.Average(valueSelector)) : runs.Sum(valueSelector);
+            })
+            .ToList();
+    }
+
+    private IReadOnlyList<int> BuildDailyScoreTrend(Func<WorkflowDefinitionRunDto, int?> scoreSelector)
+    {
+        var start = DateTime.UtcNow.Date.AddDays(-11);
+        return Enumerable.Range(0, 12)
+            .Select(offset =>
+            {
+                var day = start.AddDays(offset);
+                return AverageScore(Runs.Where(r => LastActivityUtc(r).Date == day).Select(scoreSelector)) ?? 0;
+            })
+            .ToList();
+    }
+
+    private IReadOnlyList<int> BuildDailyFailureRateTrend()
+    {
+        var start = DateTime.UtcNow.Date.AddDays(-11);
+        return Enumerable.Range(0, 12)
+            .Select(offset =>
+            {
+                var day = start.AddDays(offset);
+                var runs = Runs.Where(r => LastActivityUtc(r).Date == day).ToList();
+                return Rate(runs.Count(r => IsRunStatus(r, RunStatus.Failed)), runs.Count);
+            })
+            .ToList();
+    }
+
+    private IReadOnlyList<int> BuildPublishDurationTrend()
+    {
+        var durations = CompletedRuns
+            .Where(r => r.StartedUtc.HasValue && r.CompletedUtc.HasValue && r.CompletedUtc.Value > r.StartedUtc.Value)
+            .OrderBy(r => r.CompletedUtc)
+            .TakeLast(12)
+            .Select(r => (int)Math.Round((r.CompletedUtc!.Value - r.StartedUtc!.Value).TotalMinutes))
+            .ToList();
+
+        return durations.Count > 0 ? durations : new List<int> { 0 };
+    }
+
+    private static int? AverageScore(IEnumerable<int?> scores)
+    {
+        var values = scores.Where(s => s.HasValue).Select(s => s!.Value).ToList();
+        return values.Count == 0 ? null : (int)Math.Round(values.Average());
+    }
+
+    private static double? AverageDurationHours(IEnumerable<WorkflowDefinitionRunDto> runs)
+    {
+        var durations = runs
+            .Where(r => r.StartedUtc.HasValue && r.CompletedUtc.HasValue && r.CompletedUtc.Value > r.StartedUtc.Value)
+            .Select(r => (r.CompletedUtc!.Value - r.StartedUtc!.Value).TotalHours)
+            .ToList();
+        return durations.Count == 0 ? null : durations.Average();
+    }
+
+    private static int Rate(int numerator, int denominator) => denominator == 0 ? 0 : (int)Math.Round(numerator * 100m / denominator);
+
+    private static string FormatSignedDelta(int delta, string suffix = "") => delta switch
+    {
+        > 0 => $"↑ {delta}{suffix}",
+        < 0 => $"↓ {Math.Abs(delta)}{suffix}",
+        _ => "− flat"
+    };
+
+    private static string FormatNullableDelta(int? current, int? previous, string suffix = "")
+        => current.HasValue && previous.HasValue ? FormatSignedDelta(current.Value - previous.Value, suffix) : "—";
+
+    private static string FormatNullableDelta(double? current, double? previous, string suffix = "")
+    {
+        if (!current.HasValue || !previous.HasValue) return "—";
+        var delta = current.Value - previous.Value;
+        if (Math.Abs(delta) < 0.05) return "− flat";
+        return delta > 0
+            ? $"↑ {delta.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)}{suffix}"
+            : $"↓ {Math.Abs(delta).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)}{suffix}";
+    }
+
+    private static string DeltaTone(double delta, bool higherIsBetter)
+    {
+        if (Math.Abs(delta) < 0.01) return "neutral";
+        return (delta > 0) == higherIsBetter ? "positive" : "negative";
+    }
+
+    private static int? ExtractSeoScore(WorkflowDefinitionRunDto run)
+    {
+        var qaAction = FindAction(run, "qa");
+        if (qaAction?.OutputSnapshotJson is null || !IsActionStatus(qaAction, RunStatus.Completed)) return null;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(qaAction.OutputSnapshotJson);
+            if (doc.RootElement.TryGetProperty("SeoScore", out var el) && el.ValueKind == JsonValueKind.Number)
+                return (int)Math.Round(el.GetDouble() * 10);
+        }
+        catch { }
+        return null;
+    }
+
+    private async Task SubmitNewIdeaAsync()
+    {
+        if (string.IsNullOrWhiteSpace(NewIdeaTitle)) return;
+        ShowNewIdeaSheet = false;
+        await Toast.ShowToast("success", "Idea created", $"\"{NewIdeaTitle}\" has been submitted for research.");
+        NewIdeaTitle = string.Empty;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            try { _statusFilter = await JS.InvokeAsync<string>("localStorage.getItem", "cos_dash_filter") ?? "All"; }
+            catch { _statusFilter = "All"; }
+
+            try
+            {
+                var runs = await Mediator.Send(new GetArticleRunsQuery());
+                Runs = runs.OrderByDescending(LastActivityUtc).ToList();
+            }
+            catch (Exception ex)
+            {
+                Error = $"Article runs failed to load: {ex.Message}";
+            }
+
+            try
+            {
+                var ideas = await Mediator.Send(new GetIdeaQueueQuery());
+                Ideas = ideas.OrderByDescending(i => i.CreatedUtc).ToList();
+            }
+            catch (Exception ex)
+            {
+                Error = string.IsNullOrWhiteSpace(Error) ? $"Ideas failed to load: {ex.Message}" : $"{Error} Ideas failed to load: {ex.Message}";
+            }
+
+            // SignalR connection for live updates
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(Navigation.ToAbsoluteUri("/workflowHub"))
+                .WithAutomaticReconnect()
+                .Build();
+
+            _hubConnection.On<string>("DashboardRefresh", async _ =>
+            {
+                await InvokeAsync(async () =>
+                {
+                    try { Runs = (await Mediator.Send(new GetArticleRunsQuery())).OrderByDescending(LastActivityUtc).ToList(); }
+                    catch { /* keep existing data on refresh failure */ }
+                    try { Ideas = (await Mediator.Send(new GetIdeaQueueQuery())).OrderByDescending(i => i.CreatedUtc).ToList(); }
+                    catch { }
+                    StateHasChanged();
+                    await Toast.ShowToast("info", "Pipeline updated", "Dashboard refreshed with latest data.");
+                });
+            });
+
+            try { await _hubConnection.StartAsync(); }
+            catch { /* non-critical: dashboard still works without live updates */ }
+
+            try { await _hubConnection.InvokeAsync("JoinDashboard"); }
+            catch { }
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+        {
+            try { await _hubConnection.InvokeAsync("LeaveDashboard"); } catch { }
+            try { await _hubConnection.DisposeAsync(); } catch { }
+        }
+    }
+
+    private static MarkupString ProgressDisplay(WorkflowDefinitionRunDto run)
+    {
+        var status = NormalizeRunStatus(run.Status);
+
+        if (status == RunStatus.Failed)
+        {
+            return new MarkupString("\u003Cspan class='progress-failed'\u003EFailed\u003C/span\u003E");
+        }
+
+        if (status == RunStatus.Completed)
+        {
+            return new MarkupString("\u003Cdiv class='progress-bar'\u003E\u003Cdiv class='progress-bar-fill done' style='width:100%'\u003E\u003C/div\u003E\u003C/div\u003E\u003Cspan class='progress-label'\u003EDone\u003C/span\u003E");
+        }
+
+        var completed = run.Actions.Count(a => IsActionStatus(a, RunStatus.Completed));
+        var total = run.Actions.Count;
+        var pct = total > 0 ? (int)Math.Round((double)completed / total * 100) : 0;
+        var currentAction = CurrentAction(run);
+        var label = currentAction is not null ? StageLabel(run) : "Starting…";
+
+        return new MarkupString($"\u003Cdiv class='progress-bar'\u003E\u003Cdiv class='progress-bar-fill running' style='width:{pct}%'\u003E\u003C/div\u003E\u003C/div\u003E\u003Cspan class='progress-label'\u003E{label}\u003C/span\u003E");
+    }
+
+    private async Task SetFilter(string filter)
+    {
+        _statusFilter = filter;
+        try { await JS.InvokeVoidAsync("localStorage.setItem", "cos_dash_filter", filter); }
+        catch { }
+    }
+
+    private async Task SetAll() => await SetFilter("All");
+    private async Task SetRunning() => await SetFilter("Running");
+    private async Task SetCompleted() => await SetFilter("Completed");
+    private async Task SetFailed() => await SetFilter("Failed");
+
+    private enum RunStatus { Ready, InProgress, Completed, Failed, Pending }
+
+    private static RunStatus NormalizeRunStatus(string status)
+    {
+        if (int.TryParse(status, out var code)) return code switch
+        {
+            1 => RunStatus.Ready,
+            2 => RunStatus.InProgress,
+            3 => RunStatus.Completed,
+            4 => RunStatus.Failed,
+            5 => RunStatus.Pending,
+            _ => RunStatus.Pending
+        };
+        return status.ToLowerInvariant() switch
+        {
+            "ready" => RunStatus.Ready,
+            "inprogress" => RunStatus.InProgress,
+            "completed" => RunStatus.Completed,
+            "failed" => RunStatus.Failed,
+            "pending" => RunStatus.Pending,
+            _ => RunStatus.Pending
+        };
+    }
+
+    private static RunStatus NormalizeActionStatus(string status)
+    {
+        if (int.TryParse(status, out var code)) return code switch
+        {
+            1 => RunStatus.Ready,
+            2 => RunStatus.InProgress,
+            3 => RunStatus.Completed,
+            4 => RunStatus.Failed,
+            5 => RunStatus.Pending,
+            _ => RunStatus.Pending
+        };
+        return status.ToLowerInvariant() switch
+        {
+            "ready" => RunStatus.Ready,
+            "inprogress" => RunStatus.InProgress,
+            "completed" => RunStatus.Completed,
+            "failed" => RunStatus.Failed,
+            "pending" => RunStatus.Pending,
+            _ => RunStatus.Pending
+        };
+    }
+
+    private static bool IsRunStatus(WorkflowDefinitionRunDto run, RunStatus expected) => NormalizeRunStatus(run.Status) == expected;
+    private static bool IsActionStatus(WorkflowActionRunDto action, RunStatus expected) => NormalizeActionStatus(action.Status) == expected;
+
+    private static string StageLabel(WorkflowDefinitionRunDto run)
+    {
+        var current = CurrentAction(run);
+        if (current is null) return run.WorkflowType;
+        var name = current.Name;
+        // Shorten known action names to readable stage labels
+        if (name.Contains("Research", StringComparison.OrdinalIgnoreCase)) return "Research";
+        if (name.Contains("Draft", StringComparison.OrdinalIgnoreCase) || name.Contains("Long-form", StringComparison.OrdinalIgnoreCase)) return "Drafting";
+        if (name.Contains("Humaniz", StringComparison.OrdinalIgnoreCase) || name.Contains("Polish", StringComparison.OrdinalIgnoreCase)) return "Polish";
+        if (name.Contains("Anti-AI", StringComparison.OrdinalIgnoreCase)) return "Anti-AI";
+        if (name.Contains("Review, Edit", StringComparison.OrdinalIgnoreCase) || name.Contains("Optimize", StringComparison.OrdinalIgnoreCase)) return "SEO Review";
+        if (name.Contains("Fact-Check", StringComparison.OrdinalIgnoreCase)) return "Fact-Check";
+        if (name.Contains("Cut The Fluff", StringComparison.OrdinalIgnoreCase)) return "Editing";
+        if (name.Contains("Image", StringComparison.OrdinalIgnoreCase) || name.Contains("Visual", StringComparison.OrdinalIgnoreCase) || name.Contains("Asset", StringComparison.OrdinalIgnoreCase)) return "Media";
+        if (name.Contains("Link", StringComparison.OrdinalIgnoreCase)) return "Links";
+        if (name.Contains("Pre-QA", StringComparison.OrdinalIgnoreCase)) return "Pre-QA";
+        if (name.Contains("QA", StringComparison.OrdinalIgnoreCase) || name.Contains("Compliance", StringComparison.OrdinalIgnoreCase)) return "QA";
+        if (name.Contains("Human Editor", StringComparison.OrdinalIgnoreCase)) return "Final Edit";
+        if (name.Contains("Scorecard", StringComparison.OrdinalIgnoreCase)) return "Scoring";
+        if (name.Contains("Trust", StringComparison.OrdinalIgnoreCase)) return "Trust";
+        if (name.Contains("Brief", StringComparison.OrdinalIgnoreCase)) return "Briefing";
+        return name.Length > 14 ? string.Concat(name.AsSpan(0, 13), "…") : name;
+    }
+
+    private static WorkflowActionRunDto? CurrentAction(WorkflowDefinitionRunDto run) =>
+        run.Actions.OrderBy(a => a.Order).FirstOrDefault(a => !IsActionStatus(a, RunStatus.Completed))
+        ?? run.Actions.OrderByDescending(a => a.Order).FirstOrDefault();
+
+    private static WorkflowActionRunDto? FindAction(WorkflowDefinitionRunDto run, string term) => term switch
+    {
+        "seo" => run.Actions.FirstOrDefault(a => a.Name.Contains("Review, Edit", StringComparison.OrdinalIgnoreCase))
+              ?? run.Actions.FirstOrDefault(a => a.Name.Contains("Optimize", StringComparison.OrdinalIgnoreCase))
+              ?? run.Actions.FirstOrDefault(a => a.Name.Contains("SEO", StringComparison.OrdinalIgnoreCase)),
+        "qa" => run.Actions.FirstOrDefault(a => a.Name.Contains("Final QA", StringComparison.OrdinalIgnoreCase))
+              ?? run.Actions.FirstOrDefault(a => a.Name.Contains("QA", StringComparison.OrdinalIgnoreCase))
+              ?? run.Actions.FirstOrDefault(a => a.Name.Contains("Quality", StringComparison.OrdinalIgnoreCase))
+              ?? run.Actions.FirstOrDefault(a => a.Name.Contains("Compliance", StringComparison.OrdinalIgnoreCase)),
+        _ => run.Actions.FirstOrDefault(a => a.Name.Contains(term, StringComparison.OrdinalIgnoreCase) || a.CapabilityKey.Contains(term, StringComparison.OrdinalIgnoreCase))
+    };
+
+    private static DateTime LastActivityUtc(WorkflowDefinitionRunDto run) =>
+        new[] { run.CompletedUtc, run.StartedUtc }
+            .Concat(run.Actions.SelectMany(a => new[] { a.CompletedUtc, a.StartedUtc }))
+            .Where(x => x.HasValue)
+            .Select(x => x!.Value)
+            .DefaultIfEmpty(DateTime.MinValue)
+            .Max();
+
+    private static string RunMeta(WorkflowDefinitionRunDto run) =>
+        string.IsNullOrWhiteSpace(run.ReaderProblem) ? $"{run.WorkflowType} · v{run.Version}" : $"{run.WorkflowType} · v{run.Version} · {run.ReaderProblem}";
+
+    private static string DisplayStatus(string raw)
+    {
+        var s = NormalizeRunStatus(raw);
+        return s switch
+        {
+            RunStatus.InProgress => "Running",
+            RunStatus.Completed => "Completed",
+            RunStatus.Failed => "Failed",
+            RunStatus.Ready => "Ready",
+            RunStatus.Pending => "Pending",
+            _ => raw
+        };
+    }
+
+    private static string BadgeClass(string raw) => NormalizeRunStatus(raw) switch
+    {
+        RunStatus.Completed => "badge-ready",
+        RunStatus.Failed => "badge-failed",
+        RunStatus.InProgress => "badge-running",
+        _ => "badge-review"
+    };
+
+    private static string IdeaBadgeClass(string status) => IsApprovedStatus(status) ? "badge-ready" : IsPendingStatus(status) ? "badge-review" : "badge-outline";
+    private static bool IsApprovedIdea(IdeaRecordDto idea) => IsApprovedStatus(idea.Status);
+    private static bool IsPendingIdea(IdeaRecordDto idea) => IsPendingStatus(idea.Status);
+    private static bool IsApprovedStatus(string status) => status.Contains("Approved", StringComparison.OrdinalIgnoreCase);
+    private static bool IsPendingStatus(string status) => status.Contains("Pending", StringComparison.OrdinalIgnoreCase) || status.Contains("Discovered", StringComparison.OrdinalIgnoreCase) || status.Contains("New", StringComparison.OrdinalIgnoreCase);
+
+    private static string StageColor(string raw) => NormalizeRunStatus(raw) switch
+    {
+        RunStatus.Failed => "hsl(var(--status-failed))",
+        RunStatus.Completed => "hsl(var(--status-ready))",
+        RunStatus.InProgress => "hsl(var(--status-running))",
+        _ => "hsl(var(--status-review))"
+    };
+
+    private static MarkupString SeoRating(WorkflowDefinitionRunDto run)
+    {
+        var seoAction = FindAction(run, "seo");
+        var qaAction = FindAction(run, "qa");
+
+        // SEO score comes from QA action's SeoScore field (1-10 scale)
+        // Fall back to status-based display if no score found
+        int? score = null;
+        if (qaAction is not null && IsActionStatus(qaAction, RunStatus.Completed) && qaAction.OutputSnapshotJson is not null)
+        {
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(qaAction.OutputSnapshotJson);
+                if (doc.RootElement.TryGetProperty("SeoScore", out var el) && el.ValueKind == JsonValueKind.Number)
+                    score = (int)Math.Round(el.GetDouble() * 10); // 1-10 → 10-100
+            }
+            catch { }
+        }
+
+        if (score.HasValue) return ScoreMarkup(score.Value);
+        if (seoAction is null) return new MarkupString("<span class='score-empty'>—</span>");
+        var status = NormalizeActionStatus(seoAction.Status);
+        if (status == RunStatus.Failed) return ScoreMarkup(0);
+        if (status == RunStatus.InProgress) return new MarkupString("<span class='score-empty'>…</span>");
+        return new MarkupString("<span class='score-empty'>—</span>");
+    }
+
+    private static MarkupString QaRating(WorkflowDefinitionRunDto run)
+    {
+        var qaAction = FindAction(run, "qa");
+
+        int? score = null;
+        if (qaAction is not null && IsActionStatus(qaAction, RunStatus.Completed) && qaAction.OutputSnapshotJson is not null)
+        {
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(qaAction.OutputSnapshotJson);
+                if (doc.RootElement.TryGetProperty("OverallScore", out var el) && el.ValueKind == JsonValueKind.Number)
+                    score = (int)Math.Round(el.GetDouble() * 10); // 1-10 → 10-100
+            }
+            catch { }
+        }
+
+        if (score.HasValue) return ScoreMarkup(score.Value);
+        if (qaAction is null) return new MarkupString("<span class='score-empty'>—</span>");
+        var status = NormalizeActionStatus(qaAction.Status);
+        if (status == RunStatus.Failed) return ScoreMarkup(0);
+        if (status == RunStatus.InProgress) return new MarkupString("<span class='score-empty'>…</span>");
+        return new MarkupString("<span class='score-empty'>—</span>");
+    }
+
+    private static MarkupString ScoreMarkup(int score)
+    {
+        var cls = score <= 30 ? "danger" : score <= 60 ? "warn" : "good";
+        return new MarkupString($"<div class='rating rating-{cls}'>{score}</div>");
+    }
+
+    private static MarkupString ScoreOrDash(WorkflowActionRunDto? action)
+    {
+        if (action is null)
+        {
+            return new MarkupString("\u003Cspan class='score-empty'\u003E—\u003C/span\u003E");
+        }
+
+        var status = NormalizeActionStatus(action.Status);
+        var score = status == RunStatus.Completed ? 100 : status == RunStatus.Failed ? 0 : 50;
+        var cls = score == 0 ? " fail" : string.Empty;
+        var label = score == 100 ? "OK" : score == 0 ? "Fail" : "…";
+        return new MarkupString($"\u003Cdiv class='score'\u003E\u003Cdiv class='score-bar'\u003E\u003Cdiv class='score-bar-fill{cls}' style='width:{score}%'\u003E\u003C/div\u003E\u003C/div\u003E\u003Cspan class='score-value'\u003E{label}\u003C/span\u003E\u003C/div\u003E");
+    }
+
+    private static string ActionLabel(WorkflowDefinitionRunDto run) => NormalizeRunStatus(run.Status) switch
+    {
+        RunStatus.Failed => "Fix",
+        RunStatus.Completed => "View",
+        _ => "Open"
+    };
+
+    private static string ActionHref(WorkflowDefinitionRunDto run) => NormalizeRunStatus(run.Status) switch
+    {
+        RunStatus.Completed => $"/article/{run.Id}",
+        _ => $"/article-run/{run.Id}"
+    };
+
+    private static string RelativeTime(DateTime utc)
+    {
+        if (utc == DateTime.MinValue) return "—";
+        var span = DateTime.UtcNow - utc;
+        if (span.TotalMinutes < 1) return "just now";
+        if (span.TotalMinutes < 60) return $"{(int)span.TotalMinutes} min ago";
+        if (span.TotalHours < 24) return $"{(int)span.TotalHours} hr ago";
+        return $"{(int)span.TotalDays} d ago";
+    }
+
+    private List<AttentionItem> BuildAttentionItems()
+    {
+        var items = new List<AttentionItem>();
+        items.AddRange(FailedRuns.Select(r => new AttentionItem("failed", "!", ShortTitle(r.IdeaTitle ?? "Untitled article"), r.ErrorMessage ?? "Workflow failed and needs a fix or retry.", $"/article-run/{r.Id}", "Fix Job", "btn-outline")));
+        items.AddRange(CompletedRuns.Take(3).Select(r => new AttentionItem("review", "▱", ShortTitle(r.IdeaTitle ?? "Untitled article"), "Article run completed and is ready for review.", $"/article/{r.Id}", "View Article", "btn-primary")));
+        items.AddRange(PendingIdeas.Take(3).Select(i => new AttentionItem("idea", "◌", ShortTitle(i.IdeaTitle), "Idea needs approval before generation can start.", "/idea-pipeline", "Review Idea", "btn-outline")));
+        return items.Take(6).ToList();
+    }
+
+    private static string ShortTitle(string title, int maxLength = 34)
+    {
+        if (string.IsNullOrWhiteSpace(title) || title.Length <= maxLength)
+        {
+            return title;
+        }
+
+        return string.Concat(title.AsSpan(0, maxLength - 1).TrimEnd(), "…");
+    }
+
+    private sealed record AttentionItem(string Kind, string Icon, string Title, string Reason, string Href, string ButtonLabel, string ButtonClass);
+}

@@ -1,0 +1,132 @@
+@page "/admin/coordinator"
+
+@using ContentOS.Infrastructure.Agents
+@inject IWorkflowCoordinatorAgent WorkflowCoordinator
+@inject IJSRuntime JS
+
+<PageTitle>Agent Coordinator | ContentOS</PageTitle>
+
+<div class="mission-control-container">
+    <div class="header-section">
+        <div class="title-group">
+            <h1>Agent Orchestration</h1>
+            <p class="subtitle">Manually trigger the Workflow Coordinator to process pending tasks.</p>
+        </div>
+        <div class="actions-group">
+            <button class="btn-primary" @onclick="ProcessTasks">
+                <i class="fas fa-play"></i> Run Coordinator
+            </button>
+        </div>
+    </div>
+
+    <div class="status-card">
+        <div class="status-header">
+            <span class="label">System Status</span>
+            <span class="status-indicator online">Online</span>
+        </div>
+        <div class="log-window">
+            @foreach (var log in Logs)
+            {
+                <div class="log-entry">@log</div>
+            }
+            @if (IsProcessing)
+            {
+                <div class="log-entry processing">Processing tasks...</div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .mission-control-container {
+        padding: 2rem;
+        background-color: #f8f9fa;
+        min-height: 100vh;
+        font-family: 'Inter', sans-serif;
+    }
+    .header-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+    .title-group h1 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin: 0;
+    }
+    .subtitle { color: #6c757d; margin: 0.25rem 0 0 0; }
+    .btn-primary {
+        background: #228be6;
+        color: white;
+        border: none;
+        padding: 0.6rem 1.2rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: background 0.2s;
+    }
+    .btn-primary:hover { background: #1c7ed6; }
+    .status-card {
+        background: #1a1a1a;
+        color: #fff;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+    }
+    .status-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid #333;
+        padding-bottom: 0.5rem;
+    }
+    .status-header .label { font-size: 0.75rem; text-transform: uppercase; color: #888; }
+    .status-indicator {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+    .status-indicator.online { background: #2b8704; color: #fff; }
+    .log-window {
+        background: #000;
+        font-family: 'Fira Code', monospace;
+        padding: 1rem;
+        border-radius: 4px;
+        height: 300px;
+        overflow-y: auto;
+        font-size: 0.85rem;
+        line-height: 1.5;
+        color: #00ff00;
+    }
+    .log-entry { margin-bottom: 0.25rem; }
+    .log-entry.processing { color: #ffcc00; font-style: italic; }
+</style>
+
+@code {
+    private List<string> Logs = new();
+    private bool IsProcessing = false;
+
+    private async Task ProcessTasks()
+    {
+        IsProcessing = true;
+        Logs.Add($"[{DateTime.Now:HH:mm:ss}] Triggering coordinator...");
+        try
+        {
+            await WorkflowCoordinator.ProcessPendingTasksAsync();
+            Logs.Add($"[{DateTime.Now:HH:mm:ss}] Task processing cycle complete.");
+        }
+        catch (Exception ex)
+        {
+            Logs.Add($"[{DateTime.Now:HH:mm:ss}] ERROR: {ex.Message}");
+        }
+        finally
+        {
+            IsProcessing = false;
+        }
+    }
+}

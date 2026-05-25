@@ -1,0 +1,56 @@
+<div class="stat-trend-card @Tone">
+    <div class="stat-trend-head">
+        <div class="stat-trend-title">@Title</div>
+        <div class="stat-trend-icon">@Icon</div>
+    </div>
+    <div class="stat-trend-value-row">
+        <span class="stat-trend-value">@Value</span>
+        @if (!string.IsNullOrWhiteSpace(Unit))
+        {
+            <span class="stat-trend-unit">@Unit</span>
+        }
+        @if (!string.IsNullOrWhiteSpace(Delta))
+        {
+            <span class="stat-trend-delta @DeltaTone">@Delta</span>
+        }
+    </div>
+    <div class="stat-trend-subtitle">@Subtitle</div>
+    <svg class="stat-trend-chart" viewBox="0 0 360 54" preserveAspectRatio="none" aria-hidden="true">
+        <path class="stat-trend-area" d="@AreaPath" />
+        <polyline class="stat-trend-line" points="@PolylinePoints" />
+    </svg>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Value { get; set; } = string.Empty;
+    [Parameter] public string? Unit { get; set; }
+    [Parameter] public string? Delta { get; set; }
+    [Parameter] public string DeltaTone { get; set; } = "positive";
+    [Parameter] public string Subtitle { get; set; } = string.Empty;
+    [Parameter] public string Icon { get; set; } = "✓";
+    [Parameter] public string Tone { get; set; } = "green";
+    [Parameter] public IReadOnlyList<int> Points { get; set; } = new[] { 20, 24, 22, 28, 34, 32, 39, 44 };
+
+    private string PolylinePoints => BuildPolyline(Points);
+    private string AreaPath => BuildAreaPath(Points);
+
+    private static string BuildPolyline(IReadOnlyList<int> points)
+    {
+        if (points.Count == 0) return string.Empty;
+        var max = Math.Max(1, points.Max());
+        var min = points.Min();
+        var range = Math.Max(1, max - min);
+        var step = points.Count == 1 ? 0 : 360d / (points.Count - 1);
+        return string.Join(" ", points.Select((p, i) => $"{i * step:0.#},{ScaleY(p, min, range):0.#}"));
+    }
+
+    private static string BuildAreaPath(IReadOnlyList<int> points)
+    {
+        if (points.Count == 0) return string.Empty;
+        return $"M {BuildPolyline(points).Replace(" ", " L ")} L 360 54 L 0 54 Z";
+    }
+
+    private static double ScaleY(int value, int min, int range)
+        => 48 - ((value - min) / (double)range * 34);
+}

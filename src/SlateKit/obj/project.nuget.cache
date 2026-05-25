@@ -1,0 +1,50 @@
+{
+  "version": 2,
+  "dgSpecHash": "fUStVQuJV8s=",
+  "success": true,
+  "projectFilePath": "/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/SlateKit.csproj",
+  "expectedPackageFiles": [
+    "/home/jarvis_bot/.nuget/packages/automapper/16.1.1/automapper.16.1.1.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/automapper.extensions.microsoft.dependencyinjection/12.0.1/automapper.extensions.microsoft.dependencyinjection.12.0.1.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/mediatr/14.1.0/mediatr.14.1.0.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/mediatr.contracts/2.0.1/mediatr.contracts.2.0.1.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/mediatr.extensions.microsoft.dependencyinjection/4.1.0/mediatr.extensions.microsoft.dependencyinjection.4.1.0.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.aspnetcore.authorization/10.0.7/microsoft.aspnetcore.authorization.10.0.7.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.aspnetcore.components/10.0.7/microsoft.aspnetcore.components.10.0.7.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.aspnetcore.components.analyzers/10.0.7/microsoft.aspnetcore.components.analyzers.10.0.7.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.aspnetcore.components.forms/10.0.7/microsoft.aspnetcore.components.forms.10.0.7.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.aspnetcore.components.web/10.0.7/microsoft.aspnetcore.components.web.10.0.7.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.aspnetcore.metadata/10.0.7/microsoft.aspnetcore.metadata.10.0.7.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.extensions.configuration/10.0.7/microsoft.extensions.configuration.10.0.7.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.extensions.configuration.abstractions/10.0.7/microsoft.extensions.configuration.abstractions.10.0.7.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.extensions.configuration.binder/10.0.7/microsoft.extensions.configuration.binder.10.0.7.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.extensions.dependencyinjection/10.0.7/microsoft.extensions.dependencyinjection.10.0.7.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.extensions.dependencyinjection.abstractions/10.0.7/microsoft.extensions.dependencyinjection.abstractions.10.0.7.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.extensions.diagnostics/10.0.7/microsoft.extensions.diagnostics.10.0.7.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.extensions.diagnostics.abstractions/10.0.7/microsoft.extensions.diagnostics.abstractions.10.0.7.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.extensions.logging.abstractions/10.0.7/microsoft.extensions.logging.abstractions.10.0.7.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.extensions.options/10.0.7/microsoft.extensions.options.10.0.7.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.extensions.options.configurationextensions/10.0.7/microsoft.extensions.options.configurationextensions.10.0.7.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.extensions.primitives/10.0.7/microsoft.extensions.primitives.10.0.7.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.extensions.validation/10.0.7/microsoft.extensions.validation.10.0.7.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.identitymodel.abstractions/8.14.0/microsoft.identitymodel.abstractions.8.14.0.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.identitymodel.jsonwebtokens/8.14.0/microsoft.identitymodel.jsonwebtokens.8.14.0.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.identitymodel.logging/8.14.0/microsoft.identitymodel.logging.8.14.0.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.identitymodel.tokens/8.14.0/microsoft.identitymodel.tokens.8.14.0.nupkg.sha512",
+    "/home/jarvis_bot/.nuget/packages/microsoft.jsinterop/10.0.7/microsoft.jsinterop.10.0.7.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1608",
+      "level": "Warning",
+      "message": "Detected package version outside of dependency constraint: AutoMapper.Extensions.Microsoft.DependencyInjection 12.0.1 requires AutoMapper (= 12.0.1) but version AutoMapper 16.1.1 was resolved.",
+      "projectPath": "/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/SlateKit.csproj",
+      "warningLevel": 1,
+      "filePath": "/home/jarvis_bot/.openclaw/workspace/ContentOS/src/SlateKit/SlateKit.csproj",
+      "libraryId": "AutoMapper",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    }
+  ]
+}
