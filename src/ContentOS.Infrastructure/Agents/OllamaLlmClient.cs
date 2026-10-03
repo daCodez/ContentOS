@@ -3,9 +3,12 @@ using System.Text;
 using System.Text.Json;
 using ContentOS.Application.Abstractions;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
+using ContentOS.Infrastructure.Workflow;
 
 namespace ContentOS.Infrastructure.Agents;
 
+/// <summary>Existing Ollama client with safe provider diagnostics; prompt, response and exception content is never logged.</summary>
 public sealed class OllamaLlmClient : ILlmClient
 {
     private readonly HttpClient _httpClient;
@@ -19,6 +22,7 @@ public sealed class OllamaLlmClient : ILlmClient
 
     public async Task<T?> GenerateAsync<T>(string prompt, string? model = null, CancellationToken cancellationToken = default)
     {
+        var diagnosticStarted = Stopwatch.GetTimestamp();
         var responseText = await GenerateRawAsync(prompt, model, cancellationToken);
         if (string.IsNullOrWhiteSpace(responseText)) return default;
 
@@ -38,7 +42,7 @@ public sealed class OllamaLlmClient : ILlmClient
         }
         catch (JsonException ex)
         {
-            _logger.LogWarning(ex, "Failed to deserialize LLM response to {Type}: {Response}", typeof(T).Name, responseText[..Math.Min(200, responseText.Length)]);
+            WorkflowDiagnostics.ProviderResult(_logger, "StructuredLlm", model ?? "gemma4:31b-cloud", WorkflowDiagnostics.ConfigurationId(_httpClient.BaseAddress), diagnosticStarted, "invalid-json", failure: WorkflowDiagnostics.Failure(ex));
             return default;
         }
     }
@@ -51,6 +55,7 @@ public sealed class OllamaLlmClient : ILlmClient
     private async Task<string> GenerateRawAsync(string prompt, string? model, CancellationToken cancellationToken)
     {
         var actualModel = model ?? "gemma4:31b-cloud";
+        var diagnosticStarted = Stopwatch.GetTimestamp();
 
         var payload = new
         {
@@ -62,15 +67,21 @@ public sealed class OllamaLlmClient : ILlmClient
 
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("/api/generate", payload, cancellationToken);
+            using var response = await _httpClient.PostAsJsonAsync("/api/generate", payload, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadFromJsonAsync<OllamaGenerateResponse>(cancellationToken);
+            WorkflowDiagnostics.ProviderResult(_logger, "RawLlm", actualModel, WorkflowDiagnostics.ConfigurationId(_httpClient.BaseAddress), diagnosticStarted, string.IsNullOrWhiteSpace(result?.Response) ? "empty-output" : "response-received", (int)response.StatusCode);
             return result?.Response ?? string.Empty;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            WorkflowDiagnostics.ProviderResult(_logger, "RawLlm", actualModel, WorkflowDiagnostics.ConfigurationId(_httpClient.BaseAddress), diagnosticStarted, "cancelled");
+            throw;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Ollama LLM call failed for model {Model}", actualModel);
+            WorkflowDiagnostics.ProviderResult(_logger, "RawLlm", actualModel, WorkflowDiagnostics.ConfigurationId(_httpClient.BaseAddress), diagnosticStarted, "failure", failure: WorkflowDiagnostics.Failure(ex));
             throw;
         }
     }

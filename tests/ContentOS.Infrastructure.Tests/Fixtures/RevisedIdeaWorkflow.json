@@ -1,0 +1,396 @@
+{
+  "Id": "9ab59b2b-ca7c-42b2-9f01-6347ff4cec06",
+  "WorkflowDefinitionFamilyId": "27232334-87f2-46b4-b7b7-f0eb0d851181",
+  "WorkflowType": "Idea",
+  "Name": "ContentOS Ideation Workflow - Zero to Hero Budgeting",
+  "Description": "Generates, researches, scores, filters, validates, and persists structured article ideas before approval.",
+  "Version": 2,
+  "IsActive": true,
+  "RequiresHumanApproval": true,
+  "Actions": [
+    {
+      "Id": "8ccbf6ab-7c7a-418f-8e4b-f282e6b32f96",
+      "Name": "Research Audience and Pain Points",
+      "AssignedAgent": "content-research",
+      "Order": 1,
+      "Instructions": "Research beginner budgeting problems, audience language, emotional triggers, and recurring questions.",
+      "ExpectedOutput": "Audience pain point research",
+      "Steps": [
+        {
+          "Id": "81f2ac6f-4f5a-422e-8477-f577421d8170",
+          "Name": "Research Pain Points",
+          "Order": 1,
+          "Instructions": "Find urgent budgeting pain points beginners actually search for.",
+          "ExpectedOutput": "Pain point findings",
+          "CapabilityKey": "ResearchPainPoints",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "CollectedEvidencePresent",
+            "PainPointsTraceToEvidence"
+          ],
+          "PersistOutputArtifact": true
+        },
+        {
+          "Id": "d0a8693d-6a4f-4f58-b0fb-34e4712fa320",
+          "Name": "Capture Audience Language",
+          "Order": 2,
+          "Instructions": "Collect plain-language phrases, objections, fears, and desired outcomes.",
+          "ExpectedOutput": "Audience language map",
+          "CapabilityKey": "CaptureAudienceLanguage",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "ObservedPhrasesTraceToCollectedExcerpts"
+          ],
+          "PersistOutputArtifact": true
+        }
+      ],
+      "CapabilityKey": "ResearchAudienceAndPainPoints",
+      "IsEnabled": true
+    },
+    {
+      "Id": "4bc72501-aa17-4d93-8b9e-d68149358d19",
+      "Name": "Generate Structured Ideas",
+      "AssignedAgent": "content-planner",
+      "Order": 2,
+      "Instructions": "Generate 20 to 30 useful article ideas from the research. Treat 20 to 30 as an evidence-constrained target, not a quota. Return fewer supported ideas with the target, returned count and transparent shortfall reason when research is inadequate.",
+      "ExpectedOutput": "Structured idea candidates",
+      "Steps": [
+        {
+          "Id": "d2f14d58-54a0-4d9d-b251-2ff2e1e4572e",
+          "Name": "Generate Idea Candidates",
+          "Order": 1,
+          "Instructions": "Create ideas with title, reader problem, target audience, search intent, trigger, and angle.",
+          "ExpectedOutput": "Idea candidate list",
+          "CapabilityKey": "GenerateIdeaCandidates",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "CandidatesRetainSupportingEvidence",
+            "NoFillerToMeetQuota"
+          ],
+          "PersistOutputArtifact": true
+        }
+      ],
+      "CapabilityKey": "GenerateStructuredIdeas",
+      "IsEnabled": true
+    },
+    {
+      "Id": "2b1dcaa4-b3cc-46c4-bbb2-05e96c1c8709",
+      "Name": "Research Keyword Opportunities",
+      "AssignedAgent": "keyword-strategy",
+      "Order": 3,
+      "Instructions": "Attach realistic keyword opportunities to each idea.",
+      "ExpectedOutput": "Keyword strategy per idea",
+      "Steps": [
+        {
+          "Id": "6f85c420-c7e6-4a74-b27a-6a21c72b6c90",
+          "Name": "Find Primary Keywords",
+          "Order": 1,
+          "Instructions": "Find one primary keyword for each idea.",
+          "ExpectedOutput": "Primary keywords",
+          "CapabilityKey": "FindPrimaryKeywords",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "ExplicitPrimaryKeywordPerIdea",
+            "MetricProvenancePresent"
+          ],
+          "PersistOutputArtifact": true
+        },
+        {
+          "Id": "73e95b78-7447-43de-a90c-cf7a3bd78541",
+          "Name": "Build Keyword Cluster",
+          "Order": 2,
+          "Instructions": "Add secondary keywords, long-tail keywords, semantic phrases, and forbidden keyword warnings.",
+          "ExpectedOutput": "Keyword cluster",
+          "CapabilityKey": "BuildKeywordCluster",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "IntentContinuity",
+            "NaturalSupportingPhrases",
+            "MeasuredMetricsOrUnknown"
+          ],
+          "PersistOutputArtifact": true
+        }
+      ],
+      "CapabilityKey": "ResearchKeywordOpportunities",
+      "IsEnabled": true
+    },
+    {
+      "Id": "88a65927-757e-4c4b-a88c-2351ad50a59a",
+      "Name": "Score Ideas",
+      "AssignedAgent": "content-planner",
+      "Order": 4,
+      "Instructions": "Score each idea for pain, clarity, usefulness, SEO potential, rankability, and monetization fit.",
+      "ExpectedOutput": "Scored ideas",
+      "Steps": [
+        {
+          "Id": "33388d4a-ce94-4cb0-b2f3-95efe88f1fdd",
+          "Name": "Score Idea Quality",
+          "Order": 1,
+          "Instructions": "Assign pain score, clarity score, uniqueness score, usefulness score, and priority score.",
+          "ExpectedOutput": "Idea quality scores",
+          "CapabilityKey": "ScoreIdeaQuality",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "EditorialScoreLabelled",
+            "MeasurementEvidenceOrUnknown"
+          ],
+          "PersistOutputArtifact": true
+        },
+        {
+          "Id": "bcb14699-6adc-48f6-8f3c-ffb1168e9c72",
+          "Name": "Score Monetization Fit",
+          "Order": 2,
+          "Instructions": "Score whether the idea can naturally support affiliate offers, lead magnets, or email capture.",
+          "ExpectedOutput": "Monetization score",
+          "CapabilityKey": "ScoreMonetizationFit",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "NoInventedOffers",
+            "JudgmentLabelled"
+          ],
+          "PersistOutputArtifact": true
+        }
+      ],
+      "CapabilityKey": "ScoreIdeas",
+      "IsEnabled": true
+    },
+    {
+      "Id": "f594de06-d421-4693-a950-146b9eedf48e",
+      "Name": "Filter and Deduplicate Ideas",
+      "AssignedAgent": "content-humanizer",
+      "Order": 5,
+      "Instructions": "Remove duplicate, weak, vague, or keyword-shaped ideas.",
+      "ExpectedOutput": "Filtered idea list",
+      "Steps": [
+        {
+          "Id": "ea4f3ce1-5942-472b-a37d-06f42da30cc6",
+          "Name": "Filter Duplicates",
+          "Order": 1,
+          "Instructions": "Compare against existing Content Ledger ideas and remove duplicates.",
+          "ExpectedOutput": "Deduplicated ideas",
+          "CapabilityKey": "FilterDuplicates",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "ExistingLedgerCompared",
+            "DuplicateDecisionsPersisted"
+          ],
+          "PersistOutputArtifact": true
+        }
+      ],
+      "CapabilityKey": "FilterAndDeduplicateIdeas",
+      "IsEnabled": true
+    },
+    {
+      "Id": "3d2708af-0fff-4490-acce-c36f279e9552",
+      "Name": "Persist Idea Records",
+      "AssignedAgent": "content-humanizer",
+      "Order": 6,
+      "Instructions": "Persist the final structured ideas as IdeaRecord rows for approval.",
+      "ExpectedOutput": "Pending approval IdeaRecord rows",
+      "Steps": [
+        {
+          "Id": "075b6e70-b5c3-4bea-9098-4893b5cfa174",
+          "Name": "Save Idea Records",
+          "Order": 1,
+          "Instructions": "Save ideaTitle, readerProblem, audience, searchIntent, articleAngle, keywords, scores, and approval status.",
+          "ExpectedOutput": "Persisted IdeaRecord rows",
+          "CapabilityKey": "SaveIdeaRecords",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "PendingApprovalRecordsPersisted",
+            "ApprovalPackageComplete"
+          ],
+          "PersistOutputArtifact": true
+        }
+      ],
+      "CapabilityKey": "PersistIdeaRecords",
+      "IsEnabled": true
+    }
+  ],
+  "FinalOutput": {
+    "ArtifactType": "IdeaApprovalPackage",
+    "Status": "PendingApproval",
+    "LaunchesWorkflowType": "Article",
+    "RequiredFields": [
+      "ideas",
+      "targetCount",
+      "returnedCount",
+      "shortfallReason",
+      "collectedSourceReferences",
+      "metricProvenance",
+      "approvalStatus"
+    ]
+  },
+  "ExecutionSafeguards": {
+    "PersistActualStepOutput": true,
+    "AcceptanceChecksRequired": true,
+    "RejectSimulationAndLabelOnlyCompletion": true,
+    "RetainInputAndOutputVersions": true,
+    "RetainSourceAndAssetProvenance": true,
+    "UnsupportedCapabilitiesBlockExecution": true,
+    "FixtureOutputsCannotBecomePublishReady": true
+  },
+  "MetricPolicy": {
+    "EditorialJudgments": [
+      "pain",
+      "clarity",
+      "uniqueness",
+      "usefulness",
+      "priority",
+      "seoPotential",
+      "rankability",
+      "monetizationFit"
+    ],
+    "MeasuredSeoMetrics": [
+      "searchVolume",
+      "rankingDifficulty",
+      "rankingPosition",
+      "demandTrend"
+    ],
+    "RequireMeasurementEvidence": true,
+    "MeasurementEvidenceFields": [
+      "provider",
+      "collectedUtc",
+      "query",
+      "metricName",
+      "value",
+      "units",
+      "sourceReference"
+    ],
+    "MissingMeasurementValue": null,
+    "MissingMeasurementStatus": "Unknown",
+    "EditorialJudgmentIsNotMeasuredSeoEvidence": true
+  },
+  "IdeaCountPolicy": {
+    "TargetMinimum": 20,
+    "TargetMaximum": 30,
+    "MinimumIsNotAQuota": true,
+    "AllowFewerEvidenceSupportedIdeas": true,
+    "ShortfallReasonRequired": true,
+    "NoFiller": true
+  },
+  "ImportPolicy": {
+    "Mode": "DraftOnly",
+    "ActivationRequiresExplicitPublish": true,
+    "PreserveSourceIdentifiers": true,
+    "PreserveHistoricalVersionsAndRuns": true
+  },
+  "ScoringContract": {
+    "ContractVersion": "scoring-separation-v1",
+    "AutomaticTechnicalChecks": {
+      "Result": "PassFailUnknown",
+      "RequireEvidence": true,
+      "ContributeToEditorialScore": false,
+      "ChecksAreNotIndependentEditorialJudgment": true
+    },
+    "EditorialRubric": {
+      "Version": "idea-editorial-proposal-v1",
+      "ImplementationProposal": true,
+      "WeightsSelectedByUser": false,
+      "Configurable": true,
+      "Dimensions": [
+        {
+          "Key": "readerProblem",
+          "Weight": 25
+        },
+        {
+          "Key": "audienceFit",
+          "Weight": 20
+        },
+        {
+          "Key": "usefulness",
+          "Weight": 25
+        },
+        {
+          "Key": "differentiation",
+          "Weight": 20
+        },
+        {
+          "Key": "clarity",
+          "Weight": 10
+        }
+      ],
+      "RatingScale": {
+        "Minimum": 0,
+        "Maximum": 4,
+        "Anchors": {
+          "0": "Absent or contradicted; fails reader need.",
+          "1": "Weak or vague; major revision required.",
+          "2": "Partially useful; material gaps remain.",
+          "3": "Specific and grounded; minor limitations identified.",
+          "4": "Excellent against this dimension; concrete evidence and clear reader value."
+        }
+      },
+      "RequiredAssessmentFields": [
+        "rubricVersion",
+        "dimensions.key",
+        "dimensions.rating",
+        "dimensions.reason",
+        "dimensions.evidenceReferences"
+      ],
+      "Normalization": "round(sum(rating / 4 * weight), 1); weights must total 100",
+      "MissingOrInvalidAssessment": {
+        "Status": "UnassessedOrInvalidAssessment",
+        "Value": null,
+        "DoNotSubstituteZero": true
+      },
+      "AssessorKindRequired": true,
+      "GeneratorSelfAssessmentIsNotIndependentReview": true,
+      "EvidenceReferencePresenceDoesNotVerifyRelevance": true
+    },
+    "SeoAssessment": {
+      "EditorialSuggestionsRequireReasons": true,
+      "MeasuredMetricsRequireProviderQueryDateValueUnitsSource": true,
+      "UnavailableMeasuredValue": null,
+      "UnavailableMeasuredStatus": "Unknown",
+      "NoInventedSearchDemandDifficultyOrTrend": true
+    },
+    "CompletionGate": {
+      "ArticlePassThreshold": null,
+      "HardBlockersOverrideAggregate": true,
+      "HumanApprovalRequired": true,
+      "NoAutomaticApprovalOrPublishing": true
+    },
+    "HistoricalRecords": {
+      "PreserveOriginalScoreAndScale": true,
+      "MassRescoring": false,
+      "RevisedScoreRequiresNewAssessmentVersion": true
+    }
+  }
+}

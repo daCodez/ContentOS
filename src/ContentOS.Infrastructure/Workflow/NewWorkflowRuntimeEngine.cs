@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Diagnostics;
 using ContentOS.Domain.Entities;
 using ContentOS.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -188,6 +189,9 @@ public class NewWorkflowRuntimeEngine : INewWorkflowRuntimeEngine
     {
         var actionRun = await _dbContext.WorkflowActionRuns
             .Where(action => action.Status == WorkflowDefinitionRunStatus.Ready)
+            .Where(action => !_dbContext.WorkflowDefinitionRuns.Any(run => run.Id == action.WorkflowDefinitionRunId
+                && _dbContext.WorkflowDefinitionMutations.Any(mutation => mutation.WorkflowDefinitionId == run.WorkflowDefinitionId
+                    && mutation.MutationType == "FullSpecificationDraft")))
             .OrderBy(action => action.StartedUtc ?? DateTime.MinValue)
             .ThenBy(action => action.Id)
             .FirstOrDefaultAsync(cancellationToken);
@@ -243,6 +247,14 @@ public class NewWorkflowRuntimeEngine : INewWorkflowRuntimeEngine
         var workflowRun = candidate.WorkflowRun;
         var actionDefinition = candidate.ActionDefinition;
         var definition = candidate.WorkflowDefinition;
+        using var diagnosticScope = _logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["WorkflowRunId"] = workflowRun.Id, ["ActionRunId"] = actionRun.Id,
+            ["WorkflowDefinitionId"] = definition.Id, ["Version"] = definition.Version,
+            ["Stage"] = WorkflowDiagnostics.Identifier(actionDefinition.CapabilityKey)
+        });
+        var diagnosticStarted = Stopwatch.GetTimestamp();
+        var attempt = actionRun.RetryCount + 1;
 
         _logger.LogInformation("Candidate selected {ActionRunId} for workflow run {WorkflowRunId}, action {ActionName}.", actionRun.Id, workflowRun.Id, actionRun.Name);
 
@@ -279,12 +291,29 @@ public class NewWorkflowRuntimeEngine : INewWorkflowRuntimeEngine
 
         try
         {
+            _logger.LogInformation("Starting the {Stage} stage. This is attempt {Attempt} of {MaxAttempts}. WorkflowRunId={WorkflowRunId} ActionRunId={ActionRunId}", WorkflowDiagnostics.Identifier(actionDefinition.CapabilityKey), attempt, actionRun.MaxRetry, workflowRun.Id, actionRun.Id);
             _logger.LogInformation("Agent dispatch started for {ActionRunId} using agent {Agent}.", actionRun.Id, actionDefinition.AssignedAgent);
-            var dispatch = await _dispatcher.DispatchAsync(workflowRun, actionRun, actionDefinition, cancellationToken);
+            NewWorkflowDispatchResult dispatch;
+            try
+            {
+                dispatch = await _dispatcher.DispatchAsync(workflowRun, actionRun, actionDefinition, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // Caller cancellation is resumable and does not consume a provider-failure retry.
+                actionRun.Status = WorkflowDefinitionRunStatus.Ready;
+                actionRun.ErrorMessage = "The stage was cancelled. Resume the workflow when ready; no failure retry was consumed.";
+                _logger.LogInformation("The stage was cancelled by its caller. Resume the workflow when ready; no failure retry was consumed. WorkflowRunId={WorkflowRunId} ActionRunId={ActionRunId} Stage={Stage} Outcome={Outcome} ElapsedMilliseconds={ElapsedMilliseconds} Attempt={Attempt}", workflowRun.Id, actionRun.Id, WorkflowDiagnostics.Identifier(actionDefinition.CapabilityKey), "cancelled", (long)Stopwatch.GetElapsedTime(diagnosticStarted).TotalMilliseconds, attempt);
+                // Persist resumable state even though the caller token has ended.
+                await _dbContext.SaveChangesAsync(CancellationToken.None);
+                throw;
+            }
+
 
             actionRun.OutputSnapshotJson = JsonSerializer.Serialize(dispatch.Payload);
             actionRun.Status = WorkflowDefinitionRunStatus.Completed;
             actionRun.CompletedUtc = DateTime.UtcNow;
+            actionRun.ErrorMessage = null;
             await MarkStepRunsCompletedAsync(actionRun.Id, cancellationToken);
             _logger.LogInformation("Output persisted for {ActionRunId}.", actionRun.Id);
 
@@ -298,6 +327,7 @@ public class NewWorkflowRuntimeEngine : INewWorkflowRuntimeEngine
             {
                 workflowRun.Status = WorkflowDefinitionRunStatus.Completed;
                 workflowRun.CompletedUtc = DateTime.UtcNow;
+                workflowRun.ErrorMessage = null;
             }
             else
             {
@@ -306,12 +336,16 @@ public class NewWorkflowRuntimeEngine : INewWorkflowRuntimeEngine
             }
 
             await _dbContext.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation("The {Stage} stage finished and its output was saved. {NextAction} WorkflowRunId={WorkflowRunId} ActionRunId={ActionRunId} Outcome={Outcome} ElapsedMilliseconds={ElapsedMilliseconds} Attempt={Attempt} NextActionRunId={NextActionRunId}",
+                WorkflowDiagnostics.Identifier(actionDefinition.CapabilityKey), nextAction is null ? "The configured workflow has finished; this status alone does not verify factual quality." : "The next configured stage is ready.",
+                workflowRun.Id, actionRun.Id, "completed", (long)Stopwatch.GetElapsedTime(diagnosticStarted).TotalMilliseconds, attempt, nextAction?.Id);
             return true;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
+            var failure = WorkflowDiagnostics.Failure(ex);
             actionRun.RetryCount += 1;
-            actionRun.ErrorMessage = ex.Message;
+            actionRun.ErrorMessage = failure.Summary;
             actionRun.LastFailureUtc = DateTime.UtcNow;
 
             if (actionRun.RetryCount < actionRun.MaxRetry)
@@ -322,8 +356,13 @@ public class NewWorkflowRuntimeEngine : INewWorkflowRuntimeEngine
             {
                 actionRun.Status = WorkflowDefinitionRunStatus.Failed;
                 workflowRun.Status = WorkflowDefinitionRunStatus.Failed;
-                workflowRun.ErrorMessage = ex.Message;
+                workflowRun.ErrorMessage = failure.Summary;
             }
+
+            _logger.LogWarning("{Explanation} {NextAction} WorkflowRunId={WorkflowRunId} ActionRunId={ActionRunId} Stage={Stage} Outcome={Outcome} ElapsedMilliseconds={ElapsedMilliseconds} Attempt={Attempt} MaxAttempts={MaxAttempts} FailureCode={FailureCode} ExceptionType={ExceptionType} ExceptionCode={ExceptionCode} StackMethods={StackMethods}",
+                failure.Summary, actionRun.Status == WorkflowDefinitionRunStatus.Ready ? "Another attempt is queued; repeated validation failures need a corrected draft, not just another attempt." : "Automatic attempts are exhausted. Correct the cause before restarting the workflow.",
+                workflowRun.Id, actionRun.Id, WorkflowDiagnostics.Identifier(actionDefinition.CapabilityKey), actionRun.Status == WorkflowDefinitionRunStatus.Ready ? "retry" : "failed",
+                (long)Stopwatch.GetElapsedTime(diagnosticStarted).TotalMilliseconds, attempt, actionRun.MaxRetry, failure.Code, failure.ExceptionType, failure.ExceptionCode, failure.StackMethods);
 
             await _dbContext.SaveChangesAsync(cancellationToken);
             return true;

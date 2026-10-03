@@ -4,6 +4,7 @@ using ContentOS.Infrastructure.Research.Abstractions;
 
 namespace ContentOS.Infrastructure.Research.Providers;
 
+/// <summary>Collects competitor snippets and bounded observations; suggested keywords remain unmeasured source wording.</summary>
 public class CompetitorResearchProvider : IResearchSourceProvider
 {
     private readonly IResearchSearchClient _searchClient;
@@ -15,6 +16,10 @@ public class CompetitorResearchProvider : IResearchSourceProvider
 
     public string Name => "CompetitorResearchProvider";
 
+    /// <summary>Collects existing search results, retaining cleaned snippets and their original URLs.</summary>
+    /// <param name="context">Approved seed topics and retrieval bounds.</param>
+    /// <param name="cancellationToken">Caller cancellation.</param>
+    /// <returns>Findings with unverified excerpt-level observations and explicit completeness limits.</returns>
     public async Task<IReadOnlyCollection<ResearchFinding>> ResearchAsync(ResearchContext context, CancellationToken cancellationToken)
     {
         var findings = new List<ResearchFinding>();
@@ -33,46 +38,33 @@ public class CompetitorResearchProvider : IResearchSourceProvider
                 SourceType = "Competitor",
                 SourceTitle = result.Title,
                 SourceUrl = result.Url,
-                ObservedPhrase = result.Title,
-                PainPoint = InferPainPoint(seed),
-                TopicSuggestion = SuggestTopic(seed),
-                KeywordSuggestion = seed,
+                SourceExcerpt = ResearchEvidenceHandoff.CleanExcerpt(result.Content),
+                ObservedPhrase = ResearchEvidenceHandoff.ObservedQuestion(result.Title, ResearchEvidenceHandoff.CleanExcerpt(result.Content)),
+                PainPoint = ResearchEvidenceHandoff.CleanExcerpt(result.Content),
+                TopicSuggestion = ResearchEvidenceHandoff.ObservedQuestion(result.Title, ResearchEvidenceHandoff.CleanExcerpt(result.Content)),
+                KeywordSuggestion = ResearchEvidenceHandoff.ObservedQuestion(result.Title, ResearchEvidenceHandoff.CleanExcerpt(result.Content)),
                 IntentGuess = "Informational",
                 Notes = BuildGapNote(result.Content)
             }));
         }
 
-        return findings;
+        return findings.DistinctBy(f=>f.SourceUrl).ToList();
     }
 
-    private static string SuggestTopic(string seed)
-    {
-        var lower = seed.ToLowerInvariant();
-        if (lower.Contains("irregular income")) return "How to Budget With Irregular Income Without Falling Behind";
-        if (lower.Contains("overspending groceries") || lower.Contains("grocer")) return "Why Your Grocery Budget Keeps Failing and How to Fix It";
-        if (lower.Contains("different dates") || lower.Contains("bills hit")) return "How to Budget When Your Bills Hit on Different Dates";
-        return $"{ToTitle(seed)}: A Better Beginner-Friendly Version";
-    }
-
-    private static string InferPainPoint(string seed)
-    {
-        var lower = seed.ToLowerInvariant();
-        if (lower.Contains("irregular income")) return "Income changes from month to month, making it hard to budget confidently.";
-        if (lower.Contains("overspending groceries") || lower.Contains("grocer")) return "Grocery spending keeps running past the planned budget.";
-        if (lower.Contains("different dates") || lower.Contains("bills hit")) return "Bill timing makes monthly cash flow feel unpredictable and hard to manage.";
-        return "Competitor content is not making the topic easy enough for beginners.";
-    }
-
+    /// <summary>Describes only what is observable in retrieved text; absence is a research question, not a proven competitor gap.</summary>
+    /// <param name="content">Untrusted retrieved search content.</param>
+    /// <returns>Bounded observations and explicit limits without asserting source quality or inventing a gap.</returns>
     private static string BuildGapNote(string content)
     {
-        if (string.IsNullOrWhiteSpace(content))
+        var excerpt = ResearchEvidenceHandoff.CleanExcerpt(content);
+        if (string.IsNullOrWhiteSpace(excerpt))
         {
-            return "Competitor coverage exists, but the explanation likely needs to be clearer and more practical for beginners.";
+            return "No usable retrieved excerpt. Competitor coverage and content gaps are unknown; obtain evidence before making claims.";
         }
-
-        return "Competitor coverage exists, but there is room for a clearer, more practical beginner explanation.";
+        var hasNumbers = excerpt.Any(char.IsDigit);
+        var hasSteps = System.Text.RegularExpressions.Regex.IsMatch(excerpt, @"\bstep\s*\d|\bfirst\b|\bnext\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        return $"Retrieved excerpt contains {(hasNumbers ? "numeric text" : "no numeric text")} and {(hasSteps ? "step markers" : "no step markers")}. "
+            + "These are text observations, not verified examples or instructions. Any missing element is only an excerpt-level research question; full-page gaps are unverified.";
     }
 
-    private static string ToTitle(string value)
-        => string.Join(' ', value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(x => char.ToUpperInvariant(x[0]) + x[1..]));
 }

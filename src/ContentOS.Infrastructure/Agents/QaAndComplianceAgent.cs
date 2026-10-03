@@ -8,8 +8,17 @@ public interface IQaAndComplianceAgent
     Task<QaReportResult> RunFinalQaReviewAsync(ContentIdea? idea, GeneratedLongformArticle article, IReadOnlyCollection<string> secondaryKeywords, IReadOnlyCollection<string> sourceSummaries, CancellationToken cancellationToken = default);
 }
 
+/// <summary>Applies deterministic article quality rules, including known filler and source-contamination defects.</summary>
 public sealed class QaAndComplianceAgent : IQaAndComplianceAgent
 {
+    /// <summary>Checks article structure and deterministic content defects before publication.</summary>
+    /// <remarks>FAQ approval requires a question followed by non-question answer text; these structural checks do not establish factual accuracy.</remarks>
+    /// <param name="idea">The approved topic and search keyword.</param>
+    /// <param name="article">The complete structured draft.</param>
+    /// <param name="secondaryKeywords">Approved supporting phrases.</param>
+    /// <param name="sourceSummaries">Available research context.</param>
+    /// <param name="cancellationToken">Cancellation requested by the caller.</param>
+    /// <returns>A report whose quality flag is false whenever a hard content rule fails.</returns>
     public Task<QaReportResult> RunFinalQaReviewAsync(ContentIdea? idea, GeneratedLongformArticle article, IReadOnlyCollection<string> secondaryKeywords, IReadOnlyCollection<string> sourceSummaries, CancellationToken cancellationToken = default)
     {
         var keywordVariations = secondaryKeywords.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
@@ -19,8 +28,23 @@ public sealed class QaAndComplianceAgent : IQaAndComplianceAgent
         if (article.IntroParagraphs.Count < 3)
             hardRuleFailures.Add("Hook must appear in the first 3 lines.");
 
-        if (!article.Sections.Any(s => s.Heading.Contains("FAQ", StringComparison.OrdinalIgnoreCase)))
+        if (!article.Sections.Any(s => IsFaqHeading(s.Heading)))
             hardRuleFailures.Add("FAQ section is required.");
+
+        else if (!article.Sections.Where(s => IsFaqHeading(s.Heading))
+            .Select(s => string.Join("\n", s.Paragraphs)).Any(HasQuestionAndAnswer))
+            hardRuleFailures.Add("FAQ must contain an actual question and answer, not only a heading or generic tips.");
+
+        var repeatedParagraph = article.Sections.SelectMany(s => s.Paragraphs)
+            .Select(p => System.Text.RegularExpressions.Regex.Replace(p.Trim(), @"\s+", " "))
+            .Where(p => p.Length >= 60)
+            .GroupBy(p => p, StringComparer.OrdinalIgnoreCase).Any(group => group.Count() > 1);
+        if (repeatedParagraph)
+            hardRuleFailures.Add("Article contains a repeated paragraph. Give each section distinct, useful content.");
+
+        if (System.Text.RegularExpressions.Regex.IsMatch(article.FullText,
+            @"menu list icon|trend unchanged icon|arrow up icon", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            hardRuleFailures.Add("Article contains navigation or icon labels copied from source UI.");
 
         if (!article.Sections.Any(s => s.Heading.Contains("Tool", StringComparison.OrdinalIgnoreCase)))
             hardRuleFailures.Add("Monetization / tools section is required.");
@@ -31,7 +55,7 @@ public sealed class QaAndComplianceAgent : IQaAndComplianceAgent
         if (!article.FullText.Contains("- ", StringComparison.Ordinal) && !article.FullText.Contains("1. ", StringComparison.Ordinal))
             hardRuleFailures.Add("Skimmable formatting requires bullet points or numbered list formatting.");
 
-        if (!article.Sections.Any(s => s.Heading.Contains("What You'll Learn", StringComparison.OrdinalIgnoreCase)))
+        if (!article.Sections.Any(s => IsLearnHeading(s.Heading)))
             hardRuleFailures.Add("A 'What You'll Learn' section is required after the intro.");
 
         // --- Keyword repetition / stuffing check ---
@@ -105,7 +129,9 @@ public sealed class QaAndComplianceAgent : IQaAndComplianceAgent
                                 article.FullText.Contains("reduces decision fatigue", StringComparison.OrdinalIgnoreCase) ||
                                 article.FullText.Contains("narrowing the field", StringComparison.OrdinalIgnoreCase) ||
                                 article.FullText.Contains("the next move is to", StringComparison.OrdinalIgnoreCase) ||
-                                article.FullText.Contains("this section can also", StringComparison.OrdinalIgnoreCase);
+                                article.FullText.Contains("this section can also", StringComparison.OrdinalIgnoreCase) ||
+                                article.FullText.Contains("a useful longform article", StringComparison.OrdinalIgnoreCase) ||
+                                article.FullText.Contains("in the research layer", StringComparison.OrdinalIgnoreCase);
 
         if (hasMetaCommentary)
             hardRuleFailures.Add("Article contains meta-commentary (writing about the article instead of to the reader). Replace phrases like 'this section should' or 'this guide will' with direct, practical content.");
@@ -115,7 +141,8 @@ public sealed class QaAndComplianceAgent : IQaAndComplianceAgent
         var hasConcreteExample = article.FullText.Contains("for example", StringComparison.OrdinalIgnoreCase) ||
                                  article.FullText.Contains("example:", StringComparison.OrdinalIgnoreCase) ||
                                  article.FullText.Contains("if you earn", StringComparison.OrdinalIgnoreCase) ||
-                                 article.FullText.Contains("if your income", StringComparison.OrdinalIgnoreCase);
+                                 article.FullText.Contains("if your income", StringComparison.OrdinalIgnoreCase) ||
+                                 HasNamedCalculatedExample(article.Sections);
         var hasStepPlan = article.Sections.Any(s => s.Heading.Contains("step", StringComparison.OrdinalIgnoreCase) || s.Heading.Contains("quick start", StringComparison.OrdinalIgnoreCase)) ||
                           article.FullText.Contains("week 1", StringComparison.OrdinalIgnoreCase) ||
                           article.FullText.Contains("week 2", StringComparison.OrdinalIgnoreCase);
@@ -243,7 +270,7 @@ public sealed class QaAndComplianceAgent : IQaAndComplianceAgent
             var heading = section.Heading;
             var isFailing = false;
 
-            if (heading.Contains("FAQ", StringComparison.OrdinalIgnoreCase) &&
+            if (IsFaqHeading(heading) &&
                 hardRuleFailures.Any(f => f.Contains("FAQ")))
                 isFailing = true;
 
@@ -278,7 +305,7 @@ public sealed class QaAndComplianceAgent : IQaAndComplianceAgent
         }
 
         // --- Missing sections ---
-        if (!article.Sections.Any(s => s.Heading.Contains("FAQ", StringComparison.OrdinalIgnoreCase)))
+        if (!article.Sections.Any(s => IsFaqHeading(s.Heading)))
         {
             requiredFixes.Add("Add a FAQ section with 3-5 practical questions and specific answers");
             sectionsToRewrite.Add("FAQ");
@@ -799,5 +826,50 @@ public sealed class QaAndComplianceAgent : IQaAndComplianceAgent
             patterns.Add("sections that explain ideas but give no next step");
 
         return patterns.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+    private static string NormalizeHeading(string heading) =>
+        System.Text.RegularExpressions.Regex.Replace(heading.Replace('\u2019', '\'').Replace('\u2018', '\''), @"\s+", " ").Trim();
+
+    private static bool IsFaqHeading(string heading) =>
+        System.Text.RegularExpressions.Regex.IsMatch(NormalizeHeading(heading), @"\b(?:FAQ|Frequently Asked Questions)\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    private static bool IsLearnHeading(string heading) =>
+        NormalizeHeading(heading).Contains("What You'll Learn", StringComparison.OrdinalIgnoreCase);
+
+    // A named example needs a numerical calculation in its prose, not just a heading,
+    // generic advice, formula labels, or numbers appearing in a source URL.
+    // This recognizes structure; it does not verify arithmetic or factual claims.
+    private static bool HasNamedCalculatedExample(IReadOnlyCollection<GeneratedSection> sections)
+    {
+        foreach (var section in sections)
+        {
+            if (!System.Text.RegularExpressions.Regex.IsMatch(NormalizeHeading(section.Heading), @"\b(?:worked|hypothetical) example\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                continue;
+            var prose = System.Text.RegularExpressions.Regex.Replace(string.Join("\n", section.Paragraphs), @"https?://[^\s)]+", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (System.Text.RegularExpressions.Regex.IsMatch(prose, @"(?<!\w)[-\u2212]?\$?\d[\d,]*(?:\.\d+)?(?:\s*[+\-\u2212*/\u00d7\u00f7]\s*[-\u2212]?\$?\d[\d,]*(?:\.\d+)?)+\s*=\s*[-\u2212]?\$?\d[\d,]*(?:\.\d+)?"))
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>Recognizes a question followed by substantive non-question text in the same or a following line.</summary>
+    /// <param name="text">FAQ paragraphs joined with line breaks.</param>
+    /// <returns>True when at least one question has a following answer fragment longer than ten characters.</returns>
+    private static bool HasQuestionAndAnswer(string text)
+    {
+        var questionSeen = false;
+        foreach (var line in text.Split('\n'))
+        {
+            var questionIndex = line.LastIndexOf('?');
+            if (questionIndex >= 0)
+            {
+                questionSeen = true;
+                if (line[(questionIndex + 1)..].Trim().Length > 10)
+                    return true;
+            }
+            else if (questionSeen && line.Trim().Length > 10)
+                return true;
+        }
+        return false;
     }
 }

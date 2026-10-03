@@ -56,6 +56,7 @@ public class WorkflowDefinitionFamilyDto
 
 public class IdeaRecordDto
 {
+    public ContentOS.Application.Research.IdeaRankingResult? ReviewedRanking { get; set; }
     public Guid Id { get; set; }
     public Guid? SiteId { get; set; }
     public Guid? SourceWorkflowRunId { get; set; }

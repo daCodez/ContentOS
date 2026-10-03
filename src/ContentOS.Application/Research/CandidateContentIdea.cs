@@ -21,6 +21,11 @@ public class CandidateContentIdea
     public decimal CompetitionDifficultyScore { get; set; }
     public decimal MonetizationFitScore { get; set; }
     public decimal OverallScore { get; set; }
+    /// <summary>Null means unassessed; legacy numeric aliases are not a revised quality assessment.</summary>
+    public EditorialAssessmentResult? EditorialAssessment { get; set; }
+    public IdeaRankingResult? ReviewedRanking { get; set; }
+    public decimal? EditorialQualityScore => EditorialAssessment?.Score;
+    public string EditorialScoringStatus => EditorialAssessment?.Status ?? "Unassessed";
 
     // --- Topic diversity fields ---
     public TopicType TopicType { get; set; } = TopicType.Problem;
@@ -32,6 +37,10 @@ public class CandidateContentIdea
     public decimal MonetizationPotentialScore { get; set; }
 
     // --- Competition & difficulty fields ---
+    /// <summary>Availability of an unmeasured search comparison; never measured keyword difficulty.</summary>
+    public string CompetitionEvidenceStatus { get; set; } = "Unknown";
+    /// <summary>Measured keyword volume and difficulty remain unknown until a real metrics provider supplies data.</summary>
+    public string SeoMeasurementStatus { get; set; } = "Unknown";
     public bool SerpChecked { get; set; }
     public int AuthorityDomainsInSerp { get; set; }
     public bool IsHighCompetition { get; set; }

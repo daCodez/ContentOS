@@ -13,4 +13,6 @@ public class ResearchFinding
     public string IntentGuess { get; set; } = string.Empty;
     public string MonetizationHint { get; set; } = string.Empty;
     public string Notes { get; set; } = string.Empty;
+    /// <summary>Collected source text, which may be a search snippet; untrusted and distinct from inferred notes.</summary>
+    public string SourceExcerpt { get; set; } = string.Empty;
 }

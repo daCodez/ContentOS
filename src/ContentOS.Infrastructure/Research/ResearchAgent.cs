@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using ContentOS.Infrastructure.Workflow;
 using System.Text.Json;
 using ContentOS.Application.Abstractions;
 using ContentOS.Application.Research;
@@ -9,6 +11,7 @@ using ContentOS.Infrastructure.Research;
 
 namespace ContentOS.Infrastructure.Research;
 
+/// <summary>Collects research for personal publishing and saves reviewable ideas with their writer context.</summary>
 public class ResearchAgent : IResearchAgent
 {
     private readonly ContentOsDbContext _dbContext;
@@ -31,12 +34,22 @@ public class ResearchAgent : IResearchAgent
         _logger = logger;
     }
 
+    /// <summary>Collects research and saves reviewable ideas with their writer context.</summary>
+    /// <param name="siteId">The active personal publishing site.</param>
+    /// <param name="requestedIdeaCount">Requested number of ideas, bounded to the supported range.</param>
+    /// <param name="cancellationToken">Cancels research and persistence.</param>
+    /// <returns>The saved idea counts and titles.</returns>
+    /// <remarks>Freeze research fields in the idea snapshot so later article dispatch does not reconstruct keywords from display titles.</remarks>
     public async Task<RunResearchResult> RunAsync(Guid siteId, int? requestedIdeaCount = null, CancellationToken cancellationToken = default)
     {
         var site = await _dbContext.Sites.FirstOrDefaultAsync(x => x.Id == siteId && x.IsActive, cancellationToken)
             ?? throw new InvalidOperationException("Site not found or inactive.");
 
-        var targetIdeaCount = Math.Clamp(requestedIdeaCount ?? 15, 10, 20);
+        var researchOperationId = Guid.NewGuid();
+        var started = Stopwatch.GetTimestamp();
+        using var diagnosticScope = _logger.BeginScope(new Dictionary<string, object> { ["ResearchOperationId"] = researchOperationId, ["SiteId"] = site.Id });
+        _logger.LogInformation("Research started. Collected evidence will support reviewable ideas; topic relevance is not verified. ResearchOperationId={ResearchOperationId} SiteId={SiteId} Outcome={Outcome}", researchOperationId, site.Id, "started");
+        var targetIdeaCount = Math.Clamp(requestedIdeaCount ?? 15, 10, 30);
 
         var context = new ResearchContext
         {
@@ -54,8 +67,23 @@ public class ResearchAgent : IResearchAgent
         var findings = new List<ResearchFinding>();
         foreach (var provider in _providers)
         {
-            var providerFindings = await provider.ResearchAsync(context, cancellationToken);
+            var providerStarted = Stopwatch.GetTimestamp();
+            var providerId = WorkflowDiagnostics.Identifier(provider.GetType().Name);
+            _logger.LogInformation("Collecting research sources. Review provider outcome and excerpt counts before relying on evidence. ResearchOperationId={ResearchOperationId} Provider={Provider} Outcome={Outcome}", researchOperationId, providerId, "started");
+            IReadOnlyCollection<ResearchFinding> providerFindings;
+            try
+            {
+                providerFindings = await provider.ResearchAsync(context, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                var failure = WorkflowDiagnostics.Failure(ex);
+                _logger.LogWarning("Research collection ended without a result. {NextAction} ResearchOperationId={ResearchOperationId} Provider={Provider} Outcome={Outcome} ElapsedMilliseconds={ElapsedMilliseconds} FailureCode={FailureCode} ExceptionType={ExceptionType}", cancellationToken.IsCancellationRequested ? "The caller cancelled; resume when ready." : failure.Summary, researchOperationId, providerId, cancellationToken.IsCancellationRequested ? "cancelled" : "failed", (long)Stopwatch.GetElapsedTime(providerStarted).TotalMilliseconds, cancellationToken.IsCancellationRequested ? "CallerCancellation" : failure.Code, failure.ExceptionType);
+                throw;
+            }
+            _logger.LogInformation("Research provider collection finished. Inspect counts before using evidence. ResearchOperationId={ResearchOperationId} Provider={Provider} Outcome={Outcome} ElapsedMilliseconds={ElapsedMilliseconds}", researchOperationId, providerId, "completed", (long)Stopwatch.GetElapsedTime(providerStarted).TotalMilliseconds);
             findings.AddRange(providerFindings);
+            _logger.LogInformation("Research collected source records. Usable excerpts can support the brief; source relevance and factual claims are not verified. ResearchOperationId={ResearchOperationId} Provider={Provider} SourceCount={SourceCount} UsableExcerptCount={UsableExcerptCount}", researchOperationId, WorkflowDiagnostics.Identifier(provider.GetType().Name), providerFindings.Count, providerFindings.Count(f => !string.IsNullOrWhiteSpace(ResearchEvidenceHandoff.CleanExcerpt(f.SourceExcerpt))));
         }
 
         var filtered = (await _ideationAgent.GenerateIdeasAsync(context, findings, cancellationToken)).ToList();
@@ -102,14 +130,7 @@ public class ResearchAgent : IResearchAgent
             }
 
             var now = DateTime.UtcNow;
-            _logger.LogWarning(
-                "Saving research idea {Title} | keyword={Keyword} | painPoint={PainPoint} | goal={Goal} | angle={Angle} | whyNow={WhyNow}",
-                candidate.Title,
-                candidate.PrimaryKeyword,
-                candidate.AudiencePainPoint,
-                candidate.AudienceGoal,
-                candidate.RecommendedAngle,
-                candidate.WhyNow);
+
 
             var idea = new ContentIdea
             {
@@ -151,7 +172,7 @@ public class ResearchAgent : IResearchAgent
                 Intent = _deduplicator.ExtractIntent(candidate.SearchIntent),
                 PainPoint = _deduplicator.ExtractPainPoint(candidate.AudiencePainPoint),
                 SourceSummaryJson = JsonSerializer.Serialize(candidate.SupportingFindings
-                    .Select(x => $"{x.SourceType}: {x.SourceTitle}")
+                    .Select(ResearchEvidenceHandoff.ToWriterSummary)
                     .Where(x => !string.IsNullOrWhiteSpace(x))
                     .Distinct()
                     .Take(8)
@@ -165,9 +186,10 @@ public class ResearchAgent : IResearchAgent
 
             foreach (var finding in candidate.SupportingFindings.Take(8))
             {
+                var sourceId = Guid.NewGuid();
                 _dbContext.ContentResearchSources.Add(new ContentResearchSource
                 {
-                    Id = Guid.NewGuid(),
+                    Id = sourceId,
                     ContentIdeaId = idea.Id,
                     SourceType = finding.SourceType,
                     SourceTitle = finding.SourceTitle,
@@ -175,6 +197,7 @@ public class ResearchAgent : IResearchAgent
                     Notes = BuildSourceNotes(finding),
                     CreatedUtc = now
                 });
+                _logger.LogInformation("A collected source was linked to an idea for review. ResearchOperationId={ResearchOperationId} IdeaId={IdeaId} SourceId={SourceId}", researchOperationId, idea.Id, sourceId);
             }
 
             if (ideaRun is not null && ideaDefinition is not null)
@@ -209,8 +232,22 @@ public class ResearchAgent : IResearchAgent
                         uniquenessAngle = candidate.RecommendedAngle,
                         monetizationFit = candidate.MonetizationFitScore,
                         seoPotential = candidate.SeoOpportunityScore,
+                        seoMeasurementStatus = candidate.SeoMeasurementStatus,
+                        competitionEvidenceStatus = candidate.CompetitionEvidenceStatus,
                         difficulty = candidate.CompetitionDifficultyScore,
                         priorityScore = candidate.OverallScore,
+                        editorialQualityScore = candidate.EditorialQualityScore,
+                        editorialScoringStatus = candidate.EditorialScoringStatus,
+                        editorialAssessment = candidate.EditorialAssessment,
+                        editorialRubric = context.IdeaEditorialRubric,
+                        automaticChecks = new { collectedSourceReferencesPresent = candidate.SupportingFindings.Count > 0, editorialAssessmentStructurallyValid = candidate.EditorialScoringStatus == "AssessedModelOpinion", sourceRelevanceVerified = false },
+                        measuredSeo = new { status = "Unknown", searchVolume = (decimal?)null, rankingDifficulty = (decimal?)null, demandTrend = (decimal?)null },
+                        primaryKeyword = idea.PrimaryKeyword,
+                        secondaryKeywordsJson = idea.SecondaryKeywordsJson,
+                        sourceSummaryJson = idea.SourceSummaryJson,
+                        summary = idea.Summary,
+                        contentType = idea.ContentType,
+                        slugSuggestion = idea.SlugSuggestion,
                         legacyContentIdeaId = idea.Id
                     }),
                     // --- PERSIST DEDUPLICATION METADATA ---
@@ -230,12 +267,12 @@ public class ResearchAgent : IResearchAgent
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
-            "Research run completed for site {SiteId}. Findings={Findings} Candidates={Candidates} Saved={Saved} DuplicatesSkipped={DuplicatesSkipped}",
+            "Research completed. Review the saved ideas and collected sources before approving a brief; relevance is not verified. SiteId={SiteId} Findings={Findings} Candidates={Candidates} Saved={Saved} DuplicatesSkipped={DuplicatesSkipped} ResearchOperationId={ResearchOperationId} ElapsedMilliseconds={ElapsedMilliseconds} Outcome={Outcome}",
             site.Id,
             findings.Count,
             filtered.Count,
             savedTitles.Count,
-            duplicatesSkipped);
+            duplicatesSkipped, researchOperationId, (long)Stopwatch.GetElapsedTime(started).TotalMilliseconds, "completed");
 
         return new RunResearchResult
         {
@@ -245,7 +282,10 @@ public class ResearchAgent : IResearchAgent
             CandidatesCreated = filtered.Count,
             IdeasSaved = savedTitles.Count,
             DuplicatesSkipped = duplicatesSkipped,
-            SavedTitles = savedTitles
+            SavedTitles = savedTitles,
+            ShortfallReason = savedTitles.Count < targetIdeaCount
+                ? $"Saved {savedTitles.Count} of {targetIdeaCount} requested ideas. Collected {findings.Count} source findings; {filtered.Count} candidates remained after evidence and quality filtering; {duplicatesSkipped} ledger duplicates were skipped. No filler ideas were added. Collected source relevance still requires review."
+                : null
         };
     }
 
@@ -253,6 +293,9 @@ public class ResearchAgent : IResearchAgent
     private static string BuildSourceNotes(ResearchFinding finding)
     {
         var parts = new List<string>();
+
+        var excerpt = ResearchEvidenceHandoff.CleanExcerpt(finding.SourceExcerpt);
+        if (!string.IsNullOrWhiteSpace(excerpt)) parts.Add($"Untrusted collected excerpt: {excerpt}");
 
         if (!string.IsNullOrWhiteSpace(finding.ObservedPhrase)) parts.Add($"Observed: {CleanDashboardText(finding.ObservedPhrase)}");
         if (!string.IsNullOrWhiteSpace(finding.PainPoint)) parts.Add($"Pain point: {CleanDashboardText(finding.PainPoint)}");

@@ -1,3 +1,4 @@
+using ContentOS.Infrastructure.Workflow;
 using ContentOS.Application.Abstractions;
 using ContentOS.Domain.Entities;
 using ContentOS.Infrastructure.Image;
@@ -17,6 +18,7 @@ public interface IWorkflowCoordinatorAgent
     Task ProcessPendingTasksAsync(CancellationToken cancellationToken = default);
 }
 
+/// <summary>Coordinates article stages and retains the distinction between model drafts and diagnostic templates.</summary>
 public class WorkflowCoordinatorAgent : IWorkflowCoordinatorAgent
 {
     private readonly ContentOsDbContext _dbContext;
@@ -143,7 +145,7 @@ public class WorkflowCoordinatorAgent : IWorkflowCoordinatorAgent
         }
         catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing task {TaskId}", task.Id);
+                LogSafeFailure(ex, "The workflow task failed. Review its failure code before retrying.", task.ContentWorkflowJobId);
 
                 if (await TryQueueAutomaticRewriteAsync(task, ex.Message, cancellationToken))
                 {
@@ -210,7 +212,7 @@ public class WorkflowCoordinatorAgent : IWorkflowCoordinatorAgent
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Could not parse QA rework directive from failed task {TaskId}.", failedTask.Id);
+            LogSafeFailure(ex, "The QA rewrite instructions could not be read. Review the saved QA result.", failedTask.ContentWorkflowJobId);
         }
 
         var taskIdsToReset = tasks
@@ -797,7 +799,7 @@ public class WorkflowCoordinatorAgent : IWorkflowCoordinatorAgent
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Could not parse existing DraftArticle artifact for job {JobId}; synthetic/article-writer fallback will be used.", jobId);
+            LogSafeFailure(ex, "The saved article draft could not be read; any diagnostic template remains unpublishable.", jobId);
             return null;
         }
     }
@@ -863,12 +865,7 @@ public class WorkflowCoordinatorAgent : IWorkflowCoordinatorAgent
     internal Task<object> BuildKeywordStrategyPayloadAsync(ContentWorkflowTask task, ContentIdea? idea, GeneratedLongformArticle article, CancellationToken ct)
     {
         var payload = _contentStrategyAgent.BuildKeywordStrategyAsync(idea!, GetEffectiveSecondaryKeywords(task.ContentWorkflowJobId, idea!), ct).Result;
-        _logger.LogInformation("RUNTIME_TRACE keyword-strategy job {JobId} task {TaskId} primaryKeyword='{PrimaryKeyword}' ideaPrimaryKeyword='{IdeaPrimaryKeyword}' secondaryKeywords=[{SecondaryKeywords}]",
-            task.ContentWorkflowJobId,
-            task.Id,
-            payload.PrimaryKeyword,
-            idea?.PrimaryKeyword,
-            string.Join(", ", payload.SecondaryKeywords ?? Array.Empty<string>()));
+        _logger.LogInformation("Keyword strategy retained a main phrase and {RelatedPhraseCount} related phrases, including {QuestionCount} supplied questions. Ranking opportunity is not measured here. WorkflowRunId={WorkflowRunId} TaskId={TaskId}", payload.SecondaryKeywords.Length, payload.FaqQuestions.Length, task.ContentWorkflowJobId, task.Id);
         return Task.FromResult<object>(payload);
     }
 
@@ -928,7 +925,7 @@ public class WorkflowCoordinatorAgent : IWorkflowCoordinatorAgent
             var secondValidation = ValidateSeoPhrasing(rehumanizedArticle, idea);
             if (!secondValidation.IsValid)
             {
-                _logger.LogWarning("RUNTIME_TRACE gate-failure job {JobId} reason='{Reason}'", task.ContentWorkflowJobId, string.Join("; ", secondValidation.Failures));
+                _logger.LogWarning("Article wording checks still failed after adjustment. Review the named checks before retrying. WorkflowRunId={WorkflowRunId} ValidationCodes={ValidationCodes}", task.ContentWorkflowJobId, WorkflowDiagnostics.ValidationCodes(string.Join("; ", secondValidation.Failures)));
                 throw new InvalidOperationException($"SEO phrasing gate failed before QA: {string.Join("; ", secondValidation.Failures)}");
             }
 
@@ -981,12 +978,7 @@ public class WorkflowCoordinatorAgent : IWorkflowCoordinatorAgent
             CreatedByAgent = task.AssignedAgent
         };
 
-        _logger.LogInformation("RUNTIME_TRACE artifact-created job {JobId} task {TaskId} artifactType={ArtifactType} artifactId={ArtifactId} title='{Title}'",
-            task.ContentWorkflowJobId,
-            task.Id,
-            artifact.ArtifactType,
-            artifact.Id,
-            artifact.Title);
+        _logger.LogInformation("Stage output was saved locally. WorkflowRunId={WorkflowRunId} TaskId={TaskId} ArtifactType={ArtifactType} ArtifactId={ArtifactId}", task.ContentWorkflowJobId, task.Id, WorkflowDiagnostics.Identifier(artifact.ArtifactType), artifact.Id);
 
         return artifact;
     }
@@ -1008,7 +1000,7 @@ public class WorkflowCoordinatorAgent : IWorkflowCoordinatorAgent
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Could not load TopicExpansion artifact for job {JobId}. Returning default coverage.", jobId);
+            LogSafeFailure(ex, "The saved topic map could not be read. Default coverage suggestions will be used, not claimed as research.", jobId);
         }
 
         return new TopicExpansionResult(
@@ -1293,11 +1285,7 @@ public class WorkflowCoordinatorAgent : IWorkflowCoordinatorAgent
             CreatedByAgent = task.AssignedAgent
         };
 
-        _logger.LogInformation("RUNTIME_TRACE final-preview-artifact job {JobId} task {TaskId} artifactId={ArtifactId} source=normalized-preview title='{Title}'",
-            task.ContentWorkflowJobId,
-            task.Id,
-            artifact.Id,
-            artifact.Title);
+        _logger.LogInformation("An article preview was saved locally; preview creation does not certify quality. WorkflowRunId={WorkflowRunId} TaskId={TaskId} ArtifactId={ArtifactId}", task.ContentWorkflowJobId, task.Id, artifact.Id);
 
         return artifact;
     }
@@ -1346,7 +1334,7 @@ public class WorkflowCoordinatorAgent : IWorkflowCoordinatorAgent
             }.Where(x => !string.IsNullOrWhiteSpace(x)))
         };
 
-        _logger.LogInformation("SEO phrasing gate sent article back through humanize once before QA for job {JobId}. Reason: {Reason}. Humanize note: {HumanizeNote}", task.ContentWorkflowJobId, feedbackNote, string.Join(" | ", humanized.Notes));
+        _logger.LogInformation("Article wording was sent through one adjustment pass before QA. Review the named rules if it still fails. WorkflowRunId={WorkflowRunId} ValidationCodes={ValidationCodes}", task.ContentWorkflowJobId, WorkflowDiagnostics.ValidationCodes(feedbackNote));
 
         return NormalizeSeoPhrasing(updatedArticle, idea);
     }
@@ -1509,11 +1497,7 @@ public class WorkflowCoordinatorAgent : IWorkflowCoordinatorAgent
                         updatedHeading = BuildSafeHeadingFallback(heading, replacement);
                     }
 
-                    _logger.LogInformation("RUNTIME_TRACE normalization-heading phrase='{Phrase}' replacement='{Replacement}' before='{Before}' after='{After}'",
-                        primaryKeyword,
-                        replacement,
-                        heading,
-                        updatedHeading);
+                    _logger.LogInformation("Adjusted a heading to reduce repeated keyword phrasing. HeadingCharactersBefore={HeadingCharactersBefore} HeadingCharactersAfter={HeadingCharactersAfter}", heading.Length, updatedHeading.Length);
 
                     heading = CleanHeading(updatedHeading);
                     replacementsUsed.Add($"heading:{replacement}");
@@ -1546,10 +1530,7 @@ public class WorkflowCoordinatorAgent : IWorkflowCoordinatorAgent
 
                 if (!string.Equals(originalParagraph, updatedParagraph, StringComparison.Ordinal))
                 {
-                    _logger.LogInformation("RUNTIME_TRACE normalization-body phrase='{Phrase}' before='{Before}' after='{After}'",
-                        primaryKeyword,
-                        originalParagraph,
-                        updatedParagraph);
+                    _logger.LogInformation("Adjusted a paragraph to reduce repeated keyword phrasing. ParagraphCharactersBefore={ParagraphCharactersBefore} ParagraphCharactersAfter={ParagraphCharactersAfter}", originalParagraph.Length, updatedParagraph.Length);
                 }
 
                 return updatedParagraph;
@@ -1574,13 +1555,7 @@ public class WorkflowCoordinatorAgent : IWorkflowCoordinatorAgent
         var afterHeadingCount = normalizedSections.Count(section => section.Heading.Contains(primaryKeyword, StringComparison.OrdinalIgnoreCase));
         var afterBodyCount = Regex.Matches(normalizedBodyText, Regex.Escape(primaryKeyword), RegexOptions.IgnoreCase).Count;
 
-        _logger.LogInformation("RUNTIME_TRACE normalization phrase='{PrimaryKeyword}' headingCountBefore={HeadingBefore} headingCountAfter={HeadingAfter} bodyCountBefore={BodyBefore} bodyCountAfter={BodyAfter} replacementsUsed=[{Replacements}]",
-            primaryKeyword,
-            beforeHeadingCount,
-            afterHeadingCount,
-            beforeBodyCount,
-            afterBodyCount,
-            string.Join(", ", replacementsUsed));
+        _logger.LogInformation("Keyword phrasing adjustment finished: heading mentions changed from {HeadingBefore} to {HeadingAfter}, body mentions from {BodyBefore} to {BodyAfter}. ReplacementCount={ReplacementCount}", beforeHeadingCount, afterHeadingCount, beforeBodyCount, afterBodyCount, replacementsUsed.Count);
 
         return article with
         {
@@ -1710,25 +1685,30 @@ public class WorkflowCoordinatorAgent : IWorkflowCoordinatorAgent
         var bodyExactCount = string.IsNullOrWhiteSpace(primaryKeyword)
             ? 0
             : Regex.Matches(article.BodyText ?? string.Empty, Regex.Escape(primaryKeyword), RegexOptions.IgnoreCase).Count;
-        var headings = string.Join(" | ", article.Sections.Select(section => section.Heading));
-        var failures = validation is null ? string.Empty : string.Join("; ", validation.Failures);
-
         _logger.LogInformation(
-            "RUNTIME_TRACE checkpoint={Checkpoint} job {JobId} task {TaskId} ideaPrimaryKeyword='{PrimaryKeyword}' artifactSource='{ArtifactSource}' headingExactCount={HeadingExactCount} bodyExactCount={BodyExactCount} failures='{Failures}' title='{Title}' headings='{Headings}' body='{Body}' fullText='{FullText}'",
-            checkpoint,
-            task.ContentWorkflowJobId,
-            task.Id,
-            primaryKeyword,
-            artifactSource ?? string.Empty,
-            headingExactCount,
-            bodyExactCount,
-            failures,
-            article.Title,
-            headings,
-            article.BodyText,
-            article.FullText);
+            "Article checkpoint {Checkpoint}: an estimated {EstimatedWordCount} words across {SectionCount} sections. Quality checks are {ValidationOutcome}; this is not factual verification. WorkflowRunId={WorkflowRunId} TaskId={TaskId} HeadingExactCount={HeadingExactCount} BodyExactCount={BodyExactCount} IsSynthetic={IsSynthetic} ValidationCodes={ValidationCodes}",
+            WorkflowDiagnostics.Identifier(checkpoint), article.EstimatedWordCount, article.Sections.Count,
+            validation is null ? "not evaluated at this checkpoint" : validation.IsValid ? "passed" : "failed; review the named rules",
+            task.ContentWorkflowJobId, task.Id, headingExactCount, bodyExactCount, article.IsSynthetic,
+            validation is null ? "not-evaluated" : WorkflowDiagnostics.ValidationCodes(string.Join("; ", validation.Failures)));
     }
 
+    /// <summary>Retains failure identity and stack methods without copying content-bearing exception messages into logs.</summary>
+    /// <param name="exception">The actual exception.</param>
+    /// <param name="explanation">A fixed explanation identifying the operation and next action.</param>
+    /// <param name="runId">Existing workflow or task correlation identifier.</param>
+    private void LogSafeFailure(Exception exception, string explanation, Guid runId)
+    {
+        var failure = WorkflowDiagnostics.Failure(exception);
+        _logger.LogWarning("{Explanation} {NextAction} WorkflowRunId={WorkflowRunId} FailureCode={FailureCode} ExceptionType={ExceptionType} ExceptionCode={ExceptionCode} StackMethods={StackMethods}", explanation, failure.Summary, runId, failure.Code, failure.ExceptionType, failure.ExceptionCode, failure.StackMethods);
+    }
+
+    /// <summary>Builds a diagnostic template when no model draft is available.</summary>
+    /// <remarks>This is synthetic scaffolding, never publishable writer output. Preserve that provenance through quality gates.</remarks>
+    /// <param name="idea">The approved topic, if available.</param>
+    /// <param name="secondaryKeywords">Supporting phrases for the template.</param>
+    /// <param name="sourceSummaries">Available research summaries.</param>
+    /// <returns>A synthetic article that does not meet the writer quality gate.</returns>
     private static GeneratedLongformArticle BuildLongformArticle(
         ContentIdea? idea,
         List<string> secondaryKeywords,
@@ -1812,12 +1792,8 @@ public class WorkflowCoordinatorAgent : IWorkflowCoordinatorAgent
             callToAction,
             bodyText,
             fullText,
-            false,
-            introParagraphs.Count >= 3
-                && sections.Count >= 8
-                && sections.Any(section => section.Heading.Contains("FAQ", StringComparison.OrdinalIgnoreCase))
-                && sections.Any(section => section.Heading.Contains("Tool", StringComparison.OrdinalIgnoreCase))
-                && !string.IsNullOrWhiteSpace(callToAction));
+            true,
+            false);
     }
 
     private static bool CanTaskSucceed(ContentWorkflowTask task, GeneratedLongformArticle article)
@@ -1931,7 +1907,7 @@ public class WorkflowCoordinatorAgent : IWorkflowCoordinatorAgent
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to build internal link plan for workflow article {Title}.", article.Title);
+            LogSafeFailure(ex, "The internal link plan could not be built. Review local article links before publishing.", Guid.Empty);
         }
 
         if (plan is null || plan.InternalLinkTargets.Length == 0)
@@ -2062,7 +2038,7 @@ public class WorkflowCoordinatorAgent : IWorkflowCoordinatorAgent
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Could not parse image artifact {ArtifactId} for workflow job {JobId}.", artifact.Id, jobId);
+                LogSafeFailure(ex, "A saved image artifact could not be read. Review image artifacts for this workflow.", jobId);
             }
         }
 

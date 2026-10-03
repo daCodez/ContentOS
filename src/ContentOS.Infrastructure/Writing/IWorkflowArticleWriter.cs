@@ -7,6 +7,8 @@ namespace ContentOS.Infrastructure.Writing;
 
 public interface IWorkflowArticleWriter
 {
+    Task<WorkflowArticleDraft?> ReviseArticleAsync(EditorialRevisionRequest request, CancellationToken cancellationToken = default)
+        => Task.FromException<WorkflowArticleDraft?>(new NotSupportedException("Configured writer does not support structured editorial revision."));
     Task<WorkflowArticleDraft?> GenerateDraftAsync(
         string contentType,
         string title,

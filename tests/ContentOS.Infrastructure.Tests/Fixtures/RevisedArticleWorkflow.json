@@ -1,0 +1,724 @@
+{
+  "Id": "f8a6cb9b-93b5-4f3f-ae87-8ec6f58f6a11",
+  "WorkflowType": "Article",
+  "Name": "ContentOS Article Workflow - CRAFT SEO Longform",
+  "Description": "Turns one approved idea into a finished SEO article with research, drafting, CRAFT editing, trust checks, visuals, QA, and refresh planning.",
+  "Version": 6,
+  "IsActive": true,
+  "RequiresApprovedIdea": true,
+  "PassThreshold": 85,
+  "RequiresHumanApprovalBeforePublish": true,
+  "Inputs": [
+    "ideaId",
+    "ideaTitle",
+    "readerProblem",
+    "targetAudience",
+    "searchIntent",
+    "articleAngle",
+    "keywordCluster"
+  ],
+  "Actions": [
+    {
+      "Id": "673677da-81be-42ae-8544-180aa608086b",
+      "Name": "Content Strategy and Briefing",
+      "AssignedAgent": "content-strategy",
+      "Order": 1,
+      "Instructions": "Create the article strategy from the approved idea. Do not invent a new topic.",
+      "ExpectedOutput": "Content brief",
+      "Steps": [
+        {
+          "Id": "8f29dfba-c27d-45f2-af01-5b1e9ea947c0",
+          "Name": "Build Strategy Brief",
+          "Order": 1,
+          "Instructions": "Define reader, problem, promise, angle, intent, CTA path, and article goal.",
+          "ExpectedOutput": "Strategy brief",
+          "CapabilityKey": "BuildStrategyBrief",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "ApprovedIdeaPresent",
+            "TopicAndPromisePreserved",
+            "PlannedLengthPositive"
+          ],
+          "PersistOutputArtifact": true
+        }
+      ],
+      "CapabilityKey": "BuildArticleStrategy",
+      "IsEnabled": true
+    },
+    {
+      "Id": "aa3a5331-8c53-40f4-97c1-21bb22b20e51",
+      "Name": "Research, Evidence and Differentiation",
+      "AssignedAgent": "content-research",
+      "Order": 2,
+      "Instructions": "Research SERPs, competitors, audience questions, evidence, and gaps.",
+      "ExpectedOutput": "Research package",
+      "Steps": [
+        {
+          "Id": "bbf2c020-7437-46f2-95eb-33ddc5b51cc0",
+          "Name": "Search Top Ranking Articles",
+          "Order": 1,
+          "Instructions": "Review top ranking pages and summarize patterns.",
+          "ExpectedOutput": "SERP summary",
+          "CapabilityKey": "SearchTopRankingArticles",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "CollectedPagesAndQueriesPresent",
+            "RankingObservationProvenance"
+          ],
+          "PersistOutputArtifact": true
+        },
+        {
+          "Id": "c9f2b6c0-6d52-4b1f-9c7e-7a4c9e2b5f11",
+          "Name": "Competitor Gap Analysis",
+          "Order": 2,
+          "Instructions": "List what competitors do well, poorly, miss, and how this article will be better.",
+          "ExpectedOutput": "Competitor gap report",
+          "CapabilityKey": "AnalyzeCompetitorGaps",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "ComparisonTraceToCollectedPages",
+            "UnsupportedClaimsFlagged"
+          ],
+          "PersistOutputArtifact": true
+        }
+      ],
+      "CapabilityKey": "ResearchArticleEvidence",
+      "IsEnabled": true
+    },
+    {
+      "Id": "fbb87b18-0e2f-4576-b582-2af0d96d5d77",
+      "Name": "Build Keyword Strategy",
+      "AssignedAgent": "keyword-strategy",
+      "Order": 3,
+      "Instructions": "Use the approved keyword package. Do not replace the approved primary keyword without flagging it.",
+      "ExpectedOutput": "SEO keyword map",
+      "Steps": [
+        {
+          "Id": "f403a32a-ee1f-4429-ab6f-1b7965925308",
+          "Name": "Map Primary Keyword",
+          "Order": 1,
+          "Instructions": "Confirm primary keyword, search intent, and placement plan.",
+          "ExpectedOutput": "Primary keyword plan",
+          "CapabilityKey": "ConfirmApprovedPrimaryKeyword",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "ApprovedPrimaryKeywordUnchanged",
+            "IntentContinuity"
+          ],
+          "PersistOutputArtifact": true
+        },
+        {
+          "Id": "d0520e34-dfab-4106-8514-e3897620e5dc",
+          "Name": "Group Supporting Terms",
+          "Order": 2,
+          "Instructions": "Group secondary keywords, long-tail phrases, and semantic phrases by section.",
+          "ExpectedOutput": "Keyword coverage map",
+          "CapabilityKey": "GroupSupportingTerms",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "SectionMappingsPersisted",
+            "NaturalSupportingPhrases"
+          ],
+          "PersistOutputArtifact": true
+        }
+      ],
+      "CapabilityKey": "BuildArticleKeywordStrategy",
+      "IsEnabled": true
+    },
+    {
+      "Id": "0427b885-69c4-43f3-b61d-e1609d562acf",
+      "Name": "Create Structured Outline",
+      "AssignedAgent": "content-planner",
+      "Order": 4,
+      "Instructions": "Create the H1, H2/H3 structure, FAQ plan, CTA path, and reader flow.",
+      "ExpectedOutput": "Structured outline",
+      "Steps": [
+        {
+          "Id": "5cacc211-c08f-4afe-b53a-51393bb69e61",
+          "Name": "Draft Outline",
+          "Order": 1,
+          "Instructions": "Create a reader-first outline that fully answers the search intent.",
+          "ExpectedOutput": "Article outline",
+          "CapabilityKey": "CreateArticleOutline",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "ApprovedBriefReferenced",
+            "ReaderIntentCovered"
+          ],
+          "PersistOutputArtifact": true
+        }
+      ],
+      "CapabilityKey": "CreateStructuredArticleOutline",
+      "IsEnabled": true
+    },
+    {
+      "Id": "d36e0650-854d-4f90-8e67-1d79d74aa4ff",
+      "Name": "Long-form Drafting",
+      "AssignedAgent": "content-writer",
+      "Order": 5,
+      "Instructions": "Write a complete long-form article from the approved brief and outline.",
+      "ExpectedOutput": "Draft article",
+      "Steps": [
+        {
+          "Id": "f5c3813a-7536-4546-89b2-b61b443cd7b0",
+          "Name": "Write Rule-Compliant Draft",
+          "Order": 1,
+          "Instructions": "Write the full article with clear sections, practical examples, and beginner-friendly language.",
+          "ExpectedOutput": "Article draft",
+          "CapabilityKey": "DraftArticle",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "StructuredDraftPresent",
+            "ApprovedTopicAndKeywordPreserved",
+            "NoSyntheticFallback"
+          ],
+          "PersistOutputArtifact": true
+        }
+      ],
+      "CapabilityKey": "DraftArticle",
+      "IsEnabled": true
+    },
+    {
+      "Id": "e88b2a6e-bf36-48df-85fc-cff3e7da7c3e",
+      "Name": "CRAFT Editing and Trust Pass",
+      "AssignedAgent": "content-editor",
+      "Order": 6,
+      "Instructions": "Apply CRAFT: cut fluff, review facts, improve trust, polish flow, and remove weak claims.",
+      "ExpectedOutput": "Edited article",
+      "Steps": [
+        {
+          "Id": "e6e8ce71-5e36-4968-bc85-bd984e74d3c1",
+          "Name": "CRAFT Cut The Fluff",
+          "Order": 1,
+          "Instructions": "Remove filler, repeated points, vague advice, and slow sections.",
+          "ExpectedOutput": "Tightened draft",
+          "CapabilityKey": "CraftRewriteArticle",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "ProseActuallyChanged",
+            "RevisionPreservesMeaning",
+            "NewContentVersionPersisted"
+          ],
+          "PersistOutputArtifact": true
+        },
+        {
+          "Id": "bd370156-6459-41f5-a90f-f0841ac15258",
+          "Name": "Fact-Check and Trust Check",
+          "Order": 2,
+          "Instructions": "Check claims, examples, disclaimers, source usage, and credibility signals.",
+          "ExpectedOutput": "Fact and trust report",
+          "CapabilityKey": "VerifyFactsAndTrust",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "MaterialClaimsMappedToEvidence",
+            "ArithmeticChecked",
+            "UnresolvedClaimsFlagged"
+          ],
+          "PersistOutputArtifact": true
+        }
+      ],
+      "CapabilityKey": "CraftEditAndTrust",
+      "IsEnabled": true
+    },
+    {
+      "Id": "ac12ec82-dea7-4284-90ff-8005295df6c0",
+      "Name": "Humanization and Anti-AI Review",
+      "AssignedAgent": "content-humanizer",
+      "Order": 7,
+      "Instructions": "Make the article sound natural, useful, and less robotic.",
+      "ExpectedOutput": "Humanized article",
+      "Steps": [
+        {
+          "Id": "cb80c0b6-56d1-423e-ae7b-49ddfa0b5bf5",
+          "Name": "Humanize Final Draft",
+          "Order": 1,
+          "Instructions": "Rewrite awkward phrasing while preserving facts, structure, and meaning.",
+          "ExpectedOutput": "Humanized draft",
+          "CapabilityKey": "HumanizeArticle",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "ProseActuallyChanged",
+            "FactsAndStructurePreserved",
+            "ToneApplied",
+            "NewContentVersionPersisted"
+          ],
+          "PersistOutputArtifact": true
+        },
+        {
+          "Id": "3fd21799-67ab-487a-a785-d512663a1671",
+          "Name": "Anti-AI Pattern Detection",
+          "Order": 2,
+          "Instructions": "Find repeated phrasing, generic transitions, bland advice, and AI-like structure.",
+          "ExpectedOutput": "AI pattern report",
+          "CapabilityKey": "DetectRepetitionAndGenericAdvice",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "ActualDraftInspected",
+            "RepeatedPassagesLocated"
+          ],
+          "PersistOutputArtifact": true
+        },
+        {
+          "Id": "1cde5412-a775-4af2-aa27-bbec2fd33a32",
+          "Name": "Recheck Changed Draft Facts, Sources and Links",
+          "Order": 3,
+          "Instructions": "Recheck material claims, worked-example arithmetic, source attribution and links against the actual changed draft after CRAFT editing and humanization. Record the inspected content version and unresolved findings. Mechanical preservation is not proof of factual accuracy; unresolved required checks block completion.",
+          "ExpectedOutput": "Post-edit fact, source and link verification",
+          "CapabilityKey": "RecheckPostEditEvidence",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "FinalChangedVersionInspected",
+            "ClaimsAndSourcesRechecked",
+            "LinksRechecked",
+            "UnresolvedFailuresBlockCompletion"
+          ],
+          "PersistOutputArtifact": true
+        }
+      ],
+      "CapabilityKey": "HumanizeArticle",
+      "IsEnabled": true
+    },
+    {
+      "Id": "c2b6488e-5d61-4489-89c8-5a7cc8f0e650",
+      "Name": "SEO, Links and Assets",
+      "AssignedAgent": "seo-editor",
+      "Order": 8,
+      "Instructions": "Optimize SEO, internal links, visuals, assets, and snippets.",
+      "ExpectedOutput": "SEO and asset package",
+      "Steps": [
+        {
+          "Id": "5a08d6fb-9b9f-49e8-af52-842585aa311d",
+          "Name": "SEO Optimize",
+          "Order": 1,
+          "Instructions": "Create SEO title, meta description, slug, FAQ, snippet targets, and keyword coverage.",
+          "ExpectedOutput": "SEO package",
+          "CapabilityKey": "OptimizeSeoMetadata",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "MetadataMatchesActualArticle",
+            "NoInventedPromises",
+            "KeywordContinuity"
+          ],
+          "PersistOutputArtifact": true
+        },
+        {
+          "Id": "4ec6b333-afbb-4577-8091-2664e30c30b8",
+          "Name": "Internal Link Intelligence",
+          "Order": 2,
+          "Instructions": "Suggest internal links and anchor text.",
+          "ExpectedOutput": "Internal link plan",
+          "CapabilityKey": "ApplyInternalLinks",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "RealPublishedTargetsOnly",
+            "AnchorsMatchTargets",
+            "AppliedLinksPersisted"
+          ],
+          "PersistOutputArtifact": true
+        },
+        {
+          "Id": "5be7cd84-ecfc-4da4-bc1f-e16d5f9b0fcb",
+          "Name": "Visual and Asset Planning",
+          "Order": 3,
+          "Instructions": "Suggest images, tables, charts, screenshots, lead magnets, and image prompts.",
+          "ExpectedOutput": "Visual asset plan",
+          "CapabilityKey": "PlanVisualAssets",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "PlanMatchesArticleContent",
+            "PromptIsNotAssetCompletion"
+          ],
+          "PersistOutputArtifact": true
+        },
+        {
+          "Id": "df77f1c5-0bc9-4d3c-92b4-52135b3baf12",
+          "Name": "Create Required Article Images",
+          "Order": 4,
+          "Instructions": "Create the approved featured and supporting images through an explicitly authorized available provider. Persist real asset files, provider provenance, asset identity, alt text and intended placement. A prompt, mock, remote placeholder or unavailable provider is not a created image; pause with an actionable reason when required assets cannot be created.",
+          "ExpectedOutput": "Verified article image assets",
+          "CapabilityKey": "CreateArticleImages",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "AuthorizedProviderAvailable",
+            "RealAssetFilesReadable",
+            "AssetIdentityAndProvenancePersisted",
+            "NoRemotePlaceholderSuccess"
+          ],
+          "PersistOutputArtifact": true
+        },
+        {
+          "Id": "de40fc47-8a7e-4198-8275-dfdf4822f4be",
+          "Name": "Insert and Verify Article Images",
+          "Order": 5,
+          "Instructions": "Insert the created images into the authoritative article version at their planned placements. Verify files are readable, references resolve, alt text is present, and both the preview and final exports retain them. Preserve source attribution and the approved topic.",
+          "ExpectedOutput": "Article with verified inserted images",
+          "CapabilityKey": "InsertArticleImages",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "AssetsInsertedInAuthoritativeVersion",
+            "ReferencesResolve",
+            "AltTextPresent",
+            "ExportsRetainImages"
+          ],
+          "PersistOutputArtifact": true
+        },
+        {
+          "Id": "989d466a-1554-4736-aa25-1d58c4081eb3",
+          "Name": "Generate Clickable Table of Contents",
+          "Order": 6,
+          "Instructions": "Generate the TOC from the final article headings with stable unique anchors. Verify every entry targets an existing heading in the preview and delivered HTML and Markdown, and rebuild it after heading changes.",
+          "ExpectedOutput": "Clickable TOC and verified heading anchors",
+          "CapabilityKey": "BuildClickableToc",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "FinalHeadingsUsed",
+            "UniqueAnchors",
+            "EveryTocLinkResolves",
+            "ExportsRetainToc"
+          ],
+          "PersistOutputArtifact": true
+        }
+      ],
+      "CapabilityKey": "OptimizeArticleSeoAndAssets",
+      "IsEnabled": true
+    },
+    {
+      "Id": "0a512f79-23e5-4fe7-b293-f53b88154252",
+      "Name": "Final QA, Scorecard and Refresh Plan",
+      "AssignedAgent": "content-scoring",
+      "Order": 9,
+      "Instructions": "Run final QA, compliance review, scorecard, and refresh planning.",
+      "ExpectedOutput": "Final article package",
+      "Steps": [
+        {
+          "Id": "5702aaba-9a45-4a08-b37d-a8474836a0ce",
+          "Name": "Final QA and Compliance",
+          "Order": 1,
+          "Instructions": "Score clarity, completeness, SEO, trust, readability, compliance, and publish readiness.",
+          "ExpectedOutput": "QA score and findings",
+          "CapabilityKey": "RunFinalQaCompliance",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "ExactFinalContentVersionInspected",
+            "SourcesAndAssetsPresent",
+            "ScoreScaleIs0To100",
+            "HardFailuresCannotBeOverridden"
+          ],
+          "PersistOutputArtifact": true
+        },
+        {
+          "Id": "1776b255-6a94-4fd2-9735-69e3f1774703",
+          "Name": "Content Scorecard",
+          "Order": 2,
+          "Instructions": "Create the final quality scorecard.",
+          "ExpectedOutput": "Content scorecard",
+          "CapabilityKey": "BuildContentScorecard",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "ScoreBasisPersisted",
+            "PassThreshold85Applied",
+            "UnmeasuredSeoNotInvented"
+          ],
+          "PersistOutputArtifact": true
+        },
+        {
+          "Id": "a8354887-5462-4eda-b377-a9bb73a3e1f1",
+          "Name": "Refresh and Maintenance Plan",
+          "Order": 3,
+          "Instructions": "Recommend refresh date, update triggers, and future ranking improvements.",
+          "ExpectedOutput": "Refresh plan",
+          "CapabilityKey": "BuildRefreshPlan",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "ReviewDateAndTriggersRecorded",
+            "NoPromiseOfFutureRankings"
+          ],
+          "PersistOutputArtifact": true
+        },
+        {
+          "Id": "b1bbd88e-2c06-4ea2-94d5-9986ed9368a0",
+          "Name": "Verify Exact Final Article Package",
+          "Order": 4,
+          "Instructions": "Check the exact delivered article and exports after editing, SEO, image insertion and TOC creation. Record the content version and hashes used for QA. Verify topic and approved keyword continuity, sources, links, images, alt text, TOC anchors, no duplicate filler or placeholder content, and complete required outputs. Apply PassThreshold 85 on a documented 0-100 scorecard; unresolved hard failures block readiness even above threshold. Produce PendingHumanApproval status and require explicit human approval before publication.",
+          "ExpectedOutput": "Version-bound final delivery verification and pending human approval package",
+          "CapabilityKey": "VerifyDeliveredArticlePackage",
+          "IsEnabled": true,
+          "AcceptanceCheckKeys": [
+            "OutputPresent",
+            "OutputArtifactPersisted",
+            "InputVersionMatched",
+            "NotSimulated",
+            "ExactDeliveredVersionAndHashesRecorded",
+            "AllRequiredOutputsPresent",
+            "ClickableTocAndImagesRetained",
+            "NoPlaceholdersOrDuplicateFiller",
+            "HumanApprovalRequiredForCompletion"
+          ],
+          "PersistOutputArtifact": true
+        }
+      ],
+      "CapabilityKey": "FinalizeArticlePackage",
+      "IsEnabled": true
+    }
+  ],
+  "FinalOutputs": [
+    "finalArticle",
+    "seoTitle",
+    "metaDescription",
+    "slug",
+    "keywords",
+    "faq",
+    "sources",
+    "internalLinks",
+    "imagePrompts",
+    "assetSuggestions",
+    "qaScore",
+    "contentScorecard",
+    "refreshPlan",
+    "articleImages",
+    "clickableToc",
+    "finalHtml",
+    "finalMarkdown",
+    "finalDeliveryVerification",
+    "approvalStatus",
+    "postEditVerification",
+    "sourceClaimMap",
+    "stepEvidence",
+    "metricProvenance",
+    "humanApprovalRecord"
+  ],
+  "FailureHandling": {
+    "PauseOnFailure": true,
+    "RetryFailedStepOnly": true,
+    "MaxRetries": 2,
+    "PersistFailureReason": true,
+    "AllowSendBack": true
+  },
+  "ExecutionSafeguards": {
+    "PersistActualStepOutput": true,
+    "AcceptanceChecksRequired": true,
+    "RejectSimulationAndLabelOnlyCompletion": true,
+    "RetainInputAndOutputVersions": true,
+    "RetainSourceAndAssetProvenance": true,
+    "UnsupportedCapabilitiesBlockExecution": true,
+    "FixtureOutputsCannotBecomePublishReady": true
+  },
+  "MetricPolicy": {
+    "EditorialJudgments": [
+      "pain",
+      "clarity",
+      "uniqueness",
+      "usefulness",
+      "priority",
+      "seoPotential",
+      "rankability",
+      "monetizationFit"
+    ],
+    "MeasuredSeoMetrics": [
+      "searchVolume",
+      "rankingDifficulty",
+      "rankingPosition",
+      "demandTrend"
+    ],
+    "RequireMeasurementEvidence": true,
+    "MeasurementEvidenceFields": [
+      "provider",
+      "collectedUtc",
+      "query",
+      "metricName",
+      "value",
+      "units",
+      "sourceReference"
+    ],
+    "MissingMeasurementValue": null,
+    "MissingMeasurementStatus": "Unknown",
+    "EditorialJudgmentIsNotMeasuredSeoEvidence": true
+  },
+  "QualityScorePolicy": {
+    "Minimum": 0,
+    "Maximum": 100,
+    "PassThreshold": 85,
+    "HardFailuresOverrideAggregateScore": true,
+    "HistoricalScoresRemainInTheirOriginalScale": true
+  },
+  "CompletionPolicy": {
+    "MissingRequiredSourcesBlock": true,
+    "MissingOrBrokenRequiredAssetsBlock": true,
+    "MissingHumanApprovalBlocksFinalCompletion": true,
+    "MissingHumanApprovalBlocksPublish": true,
+    "BeforeApprovalStatus": "AwaitingHumanApproval",
+    "NoAutomaticPublish": true
+  },
+  "ImportPolicy": {
+    "Mode": "DraftOnly",
+    "ActivationRequiresExplicitPublish": true,
+    "PreserveSourceIdentifiers": true,
+    "PreserveHistoricalVersionsAndRuns": true
+  },
+  "ScoringContract": {
+    "ContractVersion": "scoring-separation-v1",
+    "AutomaticTechnicalChecks": {
+      "Result": "PassFailUnknown",
+      "RequireEvidence": true,
+      "ContributeToEditorialScore": false,
+      "ChecksAreNotIndependentEditorialJudgment": true
+    },
+    "EditorialRubric": {
+      "Version": "article-editorial-proposal-v1",
+      "ImplementationProposal": true,
+      "WeightsSelectedByUser": false,
+      "Configurable": true,
+      "Dimensions": [
+        {
+          "Key": "readerValue",
+          "Weight": 25
+        },
+        {
+          "Key": "accuracyAndTrust",
+          "Weight": 25
+        },
+        {
+          "Key": "clarityAndVoice",
+          "Weight": 20
+        },
+        {
+          "Key": "structureAndCompleteness",
+          "Weight": 15
+        },
+        {
+          "Key": "intentAndDifferentiation",
+          "Weight": 15
+        }
+      ],
+      "RatingScale": {
+        "Minimum": 0,
+        "Maximum": 4,
+        "Anchors": {
+          "0": "Absent or contradicted; fails reader need.",
+          "1": "Weak or vague; major revision required.",
+          "2": "Partially useful; material gaps remain.",
+          "3": "Specific and grounded; minor limitations identified.",
+          "4": "Excellent against this dimension; concrete evidence and clear reader value."
+        }
+      },
+      "RequiredAssessmentFields": [
+        "rubricVersion",
+        "dimensions.key",
+        "dimensions.rating",
+        "dimensions.reason",
+        "dimensions.evidenceReferences"
+      ],
+      "Normalization": "round(sum(rating / 4 * weight), 1); weights must total 100",
+      "MissingOrInvalidAssessment": {
+        "Status": "UnassessedOrInvalidAssessment",
+        "Value": null,
+        "DoNotSubstituteZero": true
+      },
+      "AssessorKindRequired": true,
+      "GeneratorSelfAssessmentIsNotIndependentReview": true,
+      "EvidenceReferencePresenceDoesNotVerifyRelevance": true
+    },
+    "SeoAssessment": {
+      "EditorialSuggestionsRequireReasons": true,
+      "MeasuredMetricsRequireProviderQueryDateValueUnitsSource": true,
+      "UnavailableMeasuredValue": null,
+      "UnavailableMeasuredStatus": "Unknown",
+      "NoInventedSearchDemandDifficultyOrTrend": true
+    },
+    "CompletionGate": {
+      "ArticlePassThreshold": 85,
+      "HardBlockersOverrideAggregate": true,
+      "HumanApprovalRequired": true,
+      "NoAutomaticApprovalOrPublishing": true
+    },
+    "HistoricalRecords": {
+      "PreserveOriginalScoreAndScale": true,
+      "MassRescoring": false,
+      "RevisedScoreRequiresNewAssessmentVersion": true
+    }
+  }
+}

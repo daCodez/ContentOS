@@ -44,6 +44,7 @@
         </div>
 
         <div class="widget-title">Idea Queue</div>
+        <div style="max-width:100%; overflow-x:auto;" tabindex="0" aria-label="Idea scores table, scroll horizontally on small screens">
         <table class="architect-table compact-table">
             <thead>
                 <tr>
@@ -71,7 +72,21 @@
                             </td>
                             <td>@idea.ReaderProblem</td>
                             <td>@idea.AudienceType</td>
-                            <td>@idea.PriorityScore.ToString("0.00")</td>
+                            <td>
+                                @if(idea.ReviewedRanking is { } ranking)
+                                {
+                                    @if(ranking.LowerBound.HasValue&&ranking.UpperBound.HasValue)
+                                    {<strong>@ranking.LowerBound?.ToString("0.##")–@ranking.UpperBound?.ToString("0.##")</strong>}
+                                    else
+                                    {<strong>Unassessed</strong>}
+                                    <div>@ranking.Status · @ranking.KnownWeight% assessed</div>
+                                    <a href="/idea-pipeline">Review reasons and weights</a>
+                                }
+                                else
+                                {
+                                    <span>@idea.PriorityScore.ToString("0.00")</span><div>Historical score · original scale</div>
+                                }
+                            </td>
                             <td>
                                 <span class="status-badge @(idea.Status == "Approved" ? "status-approved" : idea.Status == "Rejected" ? "status-danger" : "status-pending")">
                                     @idea.Status
@@ -98,6 +113,7 @@
                 }
             </tbody>
         </table>
+        </div>
     </section>
 
     @if (!string.IsNullOrEmpty(ErrorMessage))

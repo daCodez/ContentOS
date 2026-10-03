@@ -4,6 +4,7 @@ using ContentOS.Infrastructure.Research.Abstractions;
 
 namespace ContentOS.Infrastructure.Research.Providers;
 
+/// <summary>Preserves collected source wording and excerpts; keywords remain unmeasured suggestions.</summary>
 public class RedditResearchProvider : IResearchSourceProvider
 {
     private readonly IResearchSearchClient _searchClient;
@@ -15,6 +16,10 @@ public class RedditResearchProvider : IResearchSourceProvider
 
     public string Name => "RedditResearchProvider";
 
+    /// <summary>Collects observed questions and provenance without seed-based article claims.</summary>
+    /// <param name="context">Niche and retrieval seeds, not findings.</param>
+    /// <param name="cancellationToken">Caller cancellation.</param>
+    /// <returns>Collected findings; unavailable searches propagate without fabricated evidence.</returns>
     public async Task<IReadOnlyCollection<ResearchFinding>> ResearchAsync(ResearchContext context, CancellationToken cancellationToken)
     {
         var findings = new List<ResearchFinding>();
@@ -27,57 +32,23 @@ public class RedditResearchProvider : IResearchSourceProvider
                 includeDomains: ["reddit.com", "quora.com"],
                 cancellationToken: cancellationToken);
 
-            findings.AddRange(results.Select(result => new ResearchFinding
+            findings.AddRange(results.Where(result => (ResearchEvidenceHandoff.MatchesDomain(result.Url,"reddit.com") || ResearchEvidenceHandoff.MatchesDomain(result.Url,"quora.com")) && !string.IsNullOrWhiteSpace(ResearchEvidenceHandoff.CleanExcerpt(result.Content))).DistinctBy(result=>result.Url).Select(result => new ResearchFinding
             {
                 ProviderName = Name,
-                SourceType = "Reddit",
+                SourceType = ResearchEvidenceHandoff.MatchesDomain(result.Url,"reddit.com") ? "Reddit" : "Quora",
                 SourceTitle = result.Title,
                 SourceUrl = result.Url,
-                ObservedPhrase = ExtractObservedPhrase(result),
-                PainPoint = ExtractPainPoint(seed, result),
-                TopicSuggestion = SuggestTopic(seed),
-                KeywordSuggestion = seed,
+                SourceExcerpt = ResearchEvidenceHandoff.CleanExcerpt(result.Content),
+                ObservedPhrase = ResearchEvidenceHandoff.ObservedQuestion(result.Title, ResearchEvidenceHandoff.CleanExcerpt(result.Content)),
+                PainPoint = ResearchEvidenceHandoff.ObservedQuestion(result.Title, ResearchEvidenceHandoff.CleanExcerpt(result.Content)),
+                TopicSuggestion = ResearchEvidenceHandoff.ObservedQuestion(result.Title, ResearchEvidenceHandoff.CleanExcerpt(result.Content)),
+                KeywordSuggestion = ResearchEvidenceHandoff.ObservedQuestion(result.Title, ResearchEvidenceHandoff.CleanExcerpt(result.Content)),
                 IntentGuess = "Informational",
-                Notes = Truncate(result.Content, 220)
+                Notes = "Collected search wording, not measured keyword demand. Audience demand, volume and difficulty are unknown; snippets may omit discussion context."
             }));
         }
 
-        return findings;
+        return findings.DistinctBy(f => f.SourceUrl).ToList();
     }
 
-    private static string SuggestTopic(string seed)
-    {
-        var lower = seed.ToLowerInvariant();
-        if (lower.Contains("irregular income")) return "How to Budget With Irregular Income Without Falling Behind";
-        if (lower.Contains("grocer")) return "Why Your Grocery Budget Keeps Failing and How to Fix It";
-        if (lower.Contains("different dates") || lower.Contains("bills hit")) return "How to Budget When Your Bills Hit on Different Dates";
-        if (lower.Contains("overwhelmed")) return "How to Start Budgeting When You Feel Overwhelmed";
-        return $"{ToTitle(seed)}: What Real Beginners Keep Getting Stuck On";
-    }
-
-    private static string ExtractObservedPhrase(SearchResult result)
-        => FirstSentence(result.Content);
-
-    private static string ExtractPainPoint(string seed, SearchResult result)
-    {
-        var lower = seed.ToLowerInvariant();
-        if (lower.Contains("irregular income")) return "Income changes from month to month, making it hard to budget confidently.";
-        if (lower.Contains("grocer")) return "Grocery spending keeps running past the planned budget.";
-        if (lower.Contains("different dates") || lower.Contains("bills hit")) return "Bill timing makes monthly cash flow feel unpredictable and hard to manage.";
-        if (lower.Contains("overwhelmed")) return "The topic feels confusing and overwhelming for beginners.";
-        return FirstSentence(result.Content);
-    }
-
-    private static string FirstSentence(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
-        var split = value.Split(['.', '!', '?'], StringSplitOptions.RemoveEmptyEntries);
-        return split.FirstOrDefault()?.Trim() ?? string.Empty;
-    }
-
-    private static string ToTitle(string value)
-        => string.Join(' ', value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(x => char.ToUpperInvariant(x[0]) + x[1..]));
-
-    private static string Truncate(string value, int max)
-        => string.IsNullOrWhiteSpace(value) || value.Length <= max ? value : value[..max].TrimEnd() + "...";
 }

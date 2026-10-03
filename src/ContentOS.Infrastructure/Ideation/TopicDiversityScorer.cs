@@ -12,6 +12,7 @@ public interface ITopicDiversityScorer
     List<CandidateContentIdea> FilterUnviable(List<CandidateContentIdea> ideas, TopicDiversityConfig config);
 }
 
+/// <summary>Scores editorial fit with unmeasured search comparisons; never fabricates SEO measurements.</summary>
 public sealed class TopicDiversityScorer : ITopicDiversityScorer
 {
     private readonly IResearchSearchClient _searchClient;
@@ -23,6 +24,10 @@ public sealed class TopicDiversityScorer : ITopicDiversityScorer
         _logger = logger;
     }
 
+    /// <summary>Resets stale search state; empty or failed comparisons cannot earn opportunity boosts.</summary>
+    /// <param name="ideas">Candidates to score.</param><param name="config">Editorial heuristics.</param>
+    /// <param name="ct">Caller cancellation, which propagates.</param>
+    /// <returns>Completion after scores and explicit evidence availability are updated.</returns>
     public async Task ClassifyAndScoreAsync(IList<CandidateContentIdea> ideas, TopicDiversityConfig config, CancellationToken ct = default)
     {
         // Phase 1: Classify, detect specificity, score base metrics (synchronous)
@@ -35,7 +40,12 @@ public sealed class TopicDiversityScorer : ITopicDiversityScorer
             idea.UniquenessScore = ScoreUniqueness(idea, ideas);
             idea.ClickPotentialScore = ScoreClickPotential(idea);
             idea.MonetizationPotentialScore = ScoreMonetizationPotential(idea);
-            idea.LowCompetitionBoost = ScoreLowCompetitionBoost(idea, config);
+            idea.LowCompetitionBoost = 0m;
+            idea.SerpChecked = false;
+            idea.CompetitionEvidenceStatus = "Unknown";
+            idea.CompetitionModifier = 1m;
+            idea.IsHighCompetition = false;
+            idea.AuthorityDomainsInSerp = 0;
         }
 
         // Phase 2: SERP difficulty check (async — one search per keyword)
@@ -54,10 +64,10 @@ public sealed class TopicDiversityScorer : ITopicDiversityScorer
                 adjustedScore -= 2m;
 
             idea.OverallScore = Math.Round(Math.Max(0m, adjustedScore), 1);
-            idea.SeoOpportunityScore = idea.IntentMatchScore * 25m * idea.CompetitionModifier;
+            idea.SeoOpportunityScore = 0m; // No measured volume/difficulty provider is connected.
             idea.MonetizationFitScore = (idea.MonetizationPotentialScore + idea.LowCompetitionBoost) * 25m;
             idea.AudienceFitScore = idea.ClickPotentialScore * 25m;
-            idea.CompetitionDifficultyScore = idea.IsHighCompetition ? 80m : (10m - idea.UniquenessScore) * 10m;
+            idea.CompetitionDifficultyScore = !idea.SerpChecked ? 0m : (idea.IsHighCompetition ? 80m : (10m - idea.UniquenessScore) * 10m);
         }
     }
 
@@ -74,6 +84,7 @@ public sealed class TopicDiversityScorer : ITopicDiversityScorer
 
         if (keywords.Count == 0) return;
 
+        var failedKeywords = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var keywordDomains = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var keyword in keywords)
@@ -89,9 +100,11 @@ public sealed class TopicDiversityScorer : ITopicDiversityScorer
 
                 keywordDomains[keyword] = domains;
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "SERP difficulty check failed for keyword '{Keyword}'. Skipping.", keyword);
+                ContentOS.Infrastructure.Workflow.WorkflowDiagnostics.LogFailure(_logger, ex, "Search comparison unavailable; keyword competition remains unknown.");
+                failedKeywords.Add(keyword);
                 keywordDomains[keyword] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             }
         }
@@ -100,6 +113,8 @@ public sealed class TopicDiversityScorer : ITopicDiversityScorer
         {
             if (!keywordDomains.TryGetValue(idea.PrimaryKeyword.Trim(), out var domains)) continue;
 
+            if(domains.Count == 0) { idea.CompetitionEvidenceStatus = failedKeywords.Contains(idea.PrimaryKeyword.Trim()) ? "UnavailableSearchFailure" : "UnavailableNoResults"; continue; }
+            idea.CompetitionEvidenceStatus = "UnmeasuredSearchComparison";
             idea.SerpChecked = true;
             idea.AuthorityDomainsInSerp = domains.Count(d => config.AuthorityDomains.Contains(d));
             idea.IsHighCompetition = idea.AuthorityDomainsInSerp >= config.MaxAuthorityDomainsInSerp;
@@ -108,21 +123,18 @@ public sealed class TopicDiversityScorer : ITopicDiversityScorer
             {
                 idea.CompetitionModifier = 0.5m;
                 _logger.LogInformation(
-                    "High-competition keyword '{Keyword}': {Authority}/{Total} authority domains in top SERP. Score halved.",
-                    idea.PrimaryKeyword, idea.AuthorityDomainsInSerp, domains.Count);
+                    "Unmeasured search comparison: {Authority}/{Total} authority domains; heuristic penalty applied.", idea.AuthorityDomainsInSerp, domains.Count);
             }
             else if (idea.AuthorityDomainsInSerp >= 2)
             {
                 idea.CompetitionModifier = 0.75m;
                 _logger.LogInformation(
-                    "Moderate-competition keyword '{Keyword}': {Authority}/{Total} authority domains. Score reduced 25%.",
-                    idea.PrimaryKeyword, idea.AuthorityDomainsInSerp, domains.Count);
+                    "Unmeasured search comparison: {Authority}/{Total} authority domains; heuristic penalty applied.", idea.AuthorityDomainsInSerp, domains.Count);
             }
             else
             {
                 _logger.LogInformation(
-                    "Low-competition keyword '{Keyword}': {Authority}/{Total} authority domains. Full score.",
-                    idea.PrimaryKeyword, idea.AuthorityDomainsInSerp, domains.Count);
+                    "Unmeasured search comparison: {Authority}/{Total} authority domains; keyword difficulty remains unknown.", idea.AuthorityDomainsInSerp, domains.Count);
             }
         }
     }

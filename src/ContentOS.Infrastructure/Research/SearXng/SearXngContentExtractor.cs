@@ -1,7 +1,9 @@
+using ContentOS.Infrastructure.Workflow;
 using Microsoft.Extensions.Logging;
 
 namespace ContentOS.Infrastructure.Research.SearXng;
 
+/// <summary>Fetches source pages and extracts bounded readable research excerpts.</summary>
 public class SearXngContentExtractor
 {
     private readonly HttpClient _httpClient;
@@ -38,7 +40,7 @@ public class SearXngContentExtractor
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogDebug(ex, "Content extraction HTTP error for {Url}", url);
+            WorkflowDiagnostics.LogFailure(_logger, ex, "Source extraction failed. No page text was accepted.", WorkflowDiagnostics.SourceId(url));
             _recentlyFailed.Add(url);
             return null;
         }
@@ -49,7 +51,7 @@ public class SearXngContentExtractor
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Content extraction failed for {Url}", url);
+            WorkflowDiagnostics.LogFailure(_logger, ex, "Source extraction failed. No page text was accepted.", WorkflowDiagnostics.SourceId(url));
             return null;
         }
     }
@@ -82,6 +84,10 @@ public class SearXngContentExtractor
         return ExtractTextFromHtml(html);
     }
 
+    /// <summary>Extracts a bounded article excerpt without page navigation and control labels.</summary>
+    /// <param name="html">Source HTML, including potentially incomplete markup.</param>
+    /// <returns>Readable evidence text, or an empty string when no useful text remains.</returns>
+    /// <remarks>Prefer an explicit article or main container. Missing closing script/style tags discard the remaining block rather than causing extraction failure.</remarks>
     private static string ExtractTextFromHtml(string html)
     {
         if (string.IsNullOrWhiteSpace(html)) return "";
@@ -94,20 +100,18 @@ public class SearXngContentExtractor
         while ((scriptStart = text.IndexOf("<script", StringComparison.OrdinalIgnoreCase)) >= 0)
         {
             var scriptEnd = text.IndexOf("</script>", scriptStart, StringComparison.OrdinalIgnoreCase);
-            if (scriptEnd < 0) scriptEnd = text.Length;
-            text = text[..scriptStart] + text[(scriptEnd + 9)..];
+            text = scriptEnd < 0 ? text[..scriptStart] : text[..scriptStart] + text[(scriptEnd + 9)..];
         }
 
         // Remove <style> tags and content
         while ((scriptStart = text.IndexOf("<style", StringComparison.OrdinalIgnoreCase)) >= 0)
         {
             var styleEnd = text.IndexOf("</style>", scriptStart, StringComparison.OrdinalIgnoreCase);
-            if (styleEnd < 0) styleEnd = text.Length;
-            text = text[..scriptStart] + text[(styleEnd + 8)..];
+            text = styleEnd < 0 ? text[..scriptStart] : text[..scriptStart] + text[(styleEnd + 8)..];
         }
 
         // Remove <nav>, <footer>, <header>, <aside>, <form> blocks (boilerplate)
-        foreach (var tag in new[] { "nav", "footer", "header", "aside", "form" })
+        foreach (var tag in new[] { "nav", "footer", "header", "aside", "form", "noscript", "svg", "button" })
         {
             var openTag = $"<{tag}";
             var closeTag = $"</{tag}>";
@@ -117,6 +121,23 @@ public class SearXngContentExtractor
                 if (closePos < 0) closePos = text.Length;
                 else closePos += closeTag.Length;
                 text = text[..scriptStart] + text[closePos..];
+            }
+        }
+
+        // Whole-page tag stripping kept decorative labels from div/span-based menus.
+        // Use the page's declared reading region before selecting the first excerpt lines.
+        foreach (var container in new[] { "main", "article" })
+        {
+            var region = System.Text.RegularExpressions.Regex.Matches(text, $@"<{container}\b[^>]*>(.*?)</{container}>",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline,
+                TimeSpan.FromSeconds(1))
+                .Cast<System.Text.RegularExpressions.Match>()
+                .OrderByDescending(match => System.Text.RegularExpressions.Regex.Replace(match.Groups[1].Value, "<[^>]+>", " ").Trim().Length)
+                .FirstOrDefault();
+            if (region is not null && System.Text.RegularExpressions.Regex.Replace(region.Groups[1].Value, "<[^>]+>", " ").Trim().Length >= 40)
+            {
+                text = region.Groups[1].Value;
+                break;
             }
         }
 

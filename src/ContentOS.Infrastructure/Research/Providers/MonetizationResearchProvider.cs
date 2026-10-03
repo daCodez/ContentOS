@@ -4,6 +4,7 @@ using ContentOS.Infrastructure.Research.Abstractions;
 
 namespace ContentOS.Infrastructure.Research.Providers;
 
+/// <summary>Retains commercial-source wording and excerpts without manufacturing seed-based article topics.</summary>
 public class MonetizationResearchProvider : IResearchSourceProvider
 {
     private readonly IResearchSearchClient _searchClient;
@@ -15,6 +16,10 @@ public class MonetizationResearchProvider : IResearchSourceProvider
 
     public string Name => "MonetizationResearchProvider";
 
+    /// <summary>Collects tool-related search snippets with explicit inference limits.</summary>
+    /// <param name="context">Retrieval seeds and bounds.</param>
+    /// <param name="cancellationToken">Caller cancellation.</param>
+    /// <returns>Unverified commercial-source observations with original provenance.</returns>
     public async Task<IReadOnlyCollection<ResearchFinding>> ResearchAsync(ResearchContext context, CancellationToken cancellationToken)
     {
         var findings = new List<ResearchFinding>();
@@ -32,53 +37,18 @@ public class MonetizationResearchProvider : IResearchSourceProvider
                 SourceType = "Monetization",
                 SourceTitle = result.Title,
                 SourceUrl = result.Url,
-                ObservedPhrase = result.Title,
-                PainPoint = "Readers want a practical tool or system they can actually use.",
-                TopicSuggestion = SuggestCommercialTopic(seed),
-                KeywordSuggestion = SuggestCommercialKeyword(seed),
-                IntentGuess = InferIntent(seed),
+                SourceExcerpt = ResearchEvidenceHandoff.CleanExcerpt(result.Content),
+                ObservedPhrase = ResearchEvidenceHandoff.ObservedQuestion(result.Title, ResearchEvidenceHandoff.CleanExcerpt(result.Content)),
+                PainPoint = ResearchEvidenceHandoff.ObservedQuestion(result.Title, ResearchEvidenceHandoff.CleanExcerpt(result.Content)),
+                TopicSuggestion = ResearchEvidenceHandoff.ObservedQuestion(result.Title, ResearchEvidenceHandoff.CleanExcerpt(result.Content)),
+                KeywordSuggestion = ResearchEvidenceHandoff.ObservedQuestion(result.Title, ResearchEvidenceHandoff.CleanExcerpt(result.Content)),
+                IntentGuess = "Commercial Investigation",
                 MonetizationHint = "Apps, templates, printables, or affiliate tools",
-                Notes = Truncate(result.Content, 220)
+                Notes = "Commercial intent and tool fit are inferred from the retrieval query, not verified audience demand. Keyword metrics are unknown."
             }));
         }
 
-        return findings;
+        return findings.DistinctBy(f=>f.SourceUrl).ToList();
     }
 
-    private static string Truncate(string value, int max)
-        => string.IsNullOrWhiteSpace(value) || value.Length <= max ? value : value[..max].TrimEnd() + "...";
-
-    private static string SuggestCommercialTopic(string seed)
-    {
-        var lower = seed.ToLowerInvariant();
-        if (lower.Contains("irregular income")) return "Best Budget Apps for Irregular Income";
-        if (lower.Contains("grocer")) return "Best Grocery Budget Apps and Trackers for Beginners";
-        if (lower.Contains("different dates") || lower.Contains("variable bills")) return "Best Bill Tracker Apps for Uneven Due Dates";
-        if (lower.Contains("printable")) return "Best Budget Planner Printables for Beginners";
-        if (lower.Contains("cash stuffing")) return "Cash Stuffing Alternatives That Are Easier to Maintain";
-        if (lower.Contains("weekly vs monthly")) return "Weekly vs Monthly Budgeting Apps: Which Is Easier to Stick To?";
-        return $"Best {ToTitle(seed)} Tools for Beginners";
-    }
-
-    private static string SuggestCommercialKeyword(string seed)
-    {
-        var lower = seed.ToLowerInvariant();
-        if (lower.Contains("irregular income")) return "best budget app for irregular income";
-        if (lower.Contains("grocer")) return "best grocery budget app";
-        if (lower.Contains("different dates") || lower.Contains("variable bills")) return "best bill tracker app for budgeting";
-        if (lower.Contains("printable")) return "best budget planner printable";
-        if (lower.Contains("cash stuffing")) return "cash stuffing alternatives";
-        if (lower.Contains("weekly vs monthly")) return "weekly vs monthly budgeting app";
-        return $"best {seed}";
-    }
-
-    private static string InferIntent(string seed)
-    {
-        var lower = seed.ToLowerInvariant();
-        if (lower.Contains("alternatives") || lower.Contains("vs ") || lower.Contains("weekly vs monthly")) return "Comparison";
-        return "Commercial Investigation";
-    }
-
-    private static string ToTitle(string value)
-        => string.Join(' ', value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(x => char.ToUpperInvariant(x[0]) + x[1..]));
 }

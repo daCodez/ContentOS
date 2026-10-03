@@ -85,13 +85,38 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IResearchAgent, ResearchAgent>();
         services.AddScoped<ISerpBenchmarkService, SerpBenchmarkService>();
         services.AddScoped<IOptimizationScoringService, DefaultOptimizationScoringService>();
+        services.AddScoped<ISeparateIdeaReviewer, SeparateIdeaReviewer>();
         services.AddScoped<IResearchSourceProvider, RedditResearchProvider>();
         services.AddScoped<IResearchSourceProvider, SearchIntentResearchProvider>();
         services.AddScoped<IResearchSourceProvider, CompetitorResearchProvider>();
         services.AddScoped<IResearchSourceProvider, MonetizationResearchProvider>();
         services.AddScoped<IResearchSourceProvider, TrendResearchProvider>();
         services.AddScoped<WorkflowPipelineOrchestrator>();
+        services.AddScoped<FullWorkflowSpecificationStore>();
+        services.AddScoped<FullWorkflowStepRuntime>();
+        foreach (var capability in IdeaWorkflowStepHandler.Capabilities)
+        {
+            services.AddScoped<IFullWorkflowStepHandler>(provider => new IdeaWorkflowStepHandler(capability,
+                provider.GetRequiredService<ContentOsDbContext>(), provider.GetServices<IResearchSourceProvider>(),
+                provider.GetRequiredService<IIdeationAgent>(), provider.GetRequiredService<IResearchSearchClient>(),
+                provider.GetRequiredService<IIdeaDeduplicator>(), provider.GetRequiredService<ISeparateIdeaReviewer>()));
+        }
         services.AddScoped<NewWorkflowRuntimeDispatcher>();
+        foreach (var capability in ArticleDeliveryWorkflowStepHandler.Capabilities)
+        {
+            services.AddScoped<IFullWorkflowStepHandler>(provider => new ArticleDeliveryWorkflowStepHandler(capability,
+                provider.GetRequiredService<IWorkflowArticleWriter>(),provider.GetService<IArticleEvidenceReviewer>(),
+                provider.GetService<IAuthorizedArticleAssetProvider>()));
+        }
+        services.AddSingleton<IArticlePublicPageReader, ArticlePublicPageReader>();
+        services.AddScoped<IArticleEvidenceReviewer, SourceBoundArticleEvidenceReviewer>();
+        foreach (var capability in ArticlePlanningWorkflowStepHandler.Capabilities)
+        {
+            services.AddScoped<IFullWorkflowStepHandler>(provider => new ArticlePlanningWorkflowStepHandler(capability,
+                provider.GetRequiredService<ContentOsDbContext>(),provider.GetRequiredService<ILlmClient>(),
+                provider.GetRequiredService<IWorkflowArticleWriter>(),provider.GetRequiredService<IResearchSearchClient>(),
+                provider.GetService<IArticleEvidenceReviewer>(),provider.GetService<IPublishedArticleInventory>()));
+        }
         services.AddScoped<ContentOS.Application.Abstractions.IWorkflowBootstrapService, WorkflowBootstrapService>();
         services.AddScoped<ContentOS.Infrastructure.Agents.IContentStrategyAgent, ContentOS.Infrastructure.Agents.ContentStrategyAgent>();
         services.AddHttpClient<ContentOS.Application.Abstractions.ILlmClient, ContentOS.Infrastructure.Agents.OllamaLlmClient>(client =>

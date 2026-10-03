@@ -18,14 +18,15 @@ public sealed class EditorialAgent : IEditorialAgent
 {
     public Task<EditorialPassResult> HumanizeAndImproveReadabilityAsync(GeneratedLongformArticle article, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var hasShortHook = article.IntroParagraphs.Take(3).All(x => x.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length <= 18);
 
         return Task.FromResult(new EditorialPassResult(
             "Readability",
             new[]
             {
-                "Shortened sentences and tightened transitions for a grade 6 to 8 reading level",
-                "Checked for robotic repetition, filler, and stiff phrasing",
+                "Assessment only: article wording was retained; no editorial revision was performed",
+                "Reading level and engaging prose require an actual editorial revision and review",
                 hasShortHook ? "Hook lines are short and punchy" : "Hook lines still need tightening"
             },
             article.EstimatedWordCount,
@@ -33,32 +34,22 @@ public sealed class EditorialAgent : IEditorialAgent
             !article.IsSynthetic && article.EstimatedWordCount >= 1200 && hasShortHook));
     }
 
+    /// <summary>Returns the existing article headline and opening instead of fabricating keyword-based promises.</summary>
+    /// <param name="article">The actual draft whose wording is retained.</param>
+    /// <param name="primaryKeyword">The topic phrase; it is not inserted into a generic headline template.</param>
+    /// <param name="cancellationToken">Cancellation for the workflow.</param>
+    /// <returns>A pack grounded in draft text, with no invented alternatives or statistical hooks.</returns>
     public Task<HeadlinePackResult> ImproveHeadlineAndHookAsync(GeneratedLongformArticle article, string primaryKeyword, CancellationToken cancellationToken = default)
     {
-        var keyword = string.IsNullOrWhiteSpace(primaryKeyword) ? article.Title : primaryKeyword.Trim();
-        var normalizedKeyword = keyword.Trim().TrimEnd('.');
-        var primaryHeadline = string.IsNullOrWhiteSpace(article.Title)
-            ? $"{normalizedKeyword} for Beginners: A Simple Plan That Actually Works"
-            : article.Title;
-        var alternateHeadlines = new[]
-        {
-            $"{normalizedKeyword} for Beginners: A Step-by-Step Plan That Works",
-            $"Best {normalizedKeyword} Tips for Beginners Who Want a Simple System",
-            $"How to Start {normalizedKeyword} Without Feeling Overwhelmed"
-        };
-        var recommendedHeadline = alternateHeadlines[0];
-        var hookLines = new[]
-        {
-            $"Most {normalizedKeyword.ToLowerInvariant()} plans fail in the first 30 days.",
-            "Not because people are lazy, but because the system is too rigid for real life.",
-            $"Here is a simpler way to make {normalizedKeyword.ToLowerInvariant()} work in the real world."
-        };
+        cancellationToken.ThrowIfCancellationRequested();
+        var primaryHeadline = article.Title.Trim();
+        var hookLines = article.IntroParagraphs.Where(x => !string.IsNullOrWhiteSpace(x)).Take(3).ToArray();
 
         return Task.FromResult(new HeadlinePackResult(
             primaryHeadline,
-            alternateHeadlines,
-            recommendedHeadline,
+            Array.Empty<string>(),
+            primaryHeadline,
             hookLines,
-            article.IntroParagraphs.Count >= 2 || hookLines.Length >= 3));
+            !string.IsNullOrWhiteSpace(primaryHeadline) && hookLines.Length >= 2));
     }
 }

@@ -2,11 +2,14 @@ using System.Text.Json;
 using ContentOS.Domain.Entities;
 using ContentOS.Infrastructure.Agents;
 using ContentOS.Infrastructure.Writing;
+using ContentOS.Infrastructure.Research;
+using ContentOS.Application.Research;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ContentOS.Infrastructure.Workflow;
 
+/// <summary>Bridges approved idea snapshots to article capabilities while enforcing generation and QA failures.</summary>
 public sealed class NewWorkflowRuntimeDispatcher
 {
     private readonly IServiceScopeFactory _scopeFactory;
@@ -18,12 +21,23 @@ public sealed class NewWorkflowRuntimeDispatcher
         _dbContext = dbContext;
     }
 
+    /// <summary>Executes an article capability and enforces its returned quality decision.</summary>
+    /// <remarks>Rejected QA is a failed action, not a successfully produced report. The runtime must not promote the next action.</remarks>
+    /// <param name="workflowRun">The approved article workflow.</param>
+    /// <param name="actionRun">The action instance being executed.</param>
+    /// <param name="actionDefinition">The configured capability.</param>
+    /// <param name="cancellationToken">Cancels database and agent work.</param>
+    /// <returns>The payload and article for a successful capability.</returns>
+    /// <exception cref="InvalidOperationException">The approved idea is missing or QA rejects the article.</exception>
     public async Task<NewWorkflowDispatchResult> DispatchAsync(
         WorkflowDefinitionRun workflowRun,
         WorkflowActionRun actionRun,
         WorkflowActionDefinition actionDefinition,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (actionDefinition.CapabilityKey is not ("DraftArticle" or "HumanizeArticle" or "DeoptimizeArticle" or "PreQaSeoValidation" or "QaScoring"))
+            throw new InvalidOperationException($"Unsupported article capability '{actionDefinition.CapabilityKey}'. Configure an implemented capability before retrying.");
         using var scope = _scopeFactory.CreateScope();
         var coordinator = (WorkflowCoordinatorAgent)scope.ServiceProvider.GetRequiredService<IWorkflowCoordinatorAgent>();
 
@@ -40,6 +54,27 @@ public sealed class NewWorkflowRuntimeDispatcher
         var legacyTask = BuildCompatTask(workflowRun, actionRun, actionDefinition);
         var legacyIdea = BuildCompatIdea(idea);
 
+        // Older approved snapshots only stored the legacy ID. Read its research fields
+        // without replacing the approved title, reader problem, intent or angle.
+        using (var snapshot = JsonDocument.Parse(string.IsNullOrWhiteSpace(idea.IdeaSnapshotJson) ? "{}" : idea.IdeaSnapshotJson))
+        {
+            if (!snapshot.RootElement.TryGetProperty("primaryKeyword", out _)
+                && !snapshot.RootElement.TryGetProperty("PrimaryKeyword", out _) && legacyIdea.Id != Guid.Empty)
+            {
+                var researchIdea = await _dbContext.ContentIdeas.AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.Id == legacyIdea.Id, cancellationToken);
+                if (researchIdea is not null)
+                {
+                    legacyIdea.PrimaryKeyword = researchIdea.PrimaryKeyword;
+                    legacyIdea.SecondaryKeywordsJson = researchIdea.SecondaryKeywordsJson;
+                    legacyIdea.SourceSummaryJson = researchIdea.SourceSummaryJson;
+                    legacyIdea.Summary = researchIdea.Summary;
+                    legacyIdea.ContentType = researchIdea.ContentType;
+                    legacyIdea.SlugSuggestion = researchIdea.SlugSuggestion;
+                }
+            }
+        }
+
         object payload = actionDefinition.CapabilityKey switch
         {
             "DraftArticle" => await BuildAndWriteDraftAsync(coordinator, workflowRun, actionRun, actionDefinition, idea, article, legacyTask, legacyIdea, cancellationToken),
@@ -47,8 +82,13 @@ public sealed class NewWorkflowRuntimeDispatcher
             "DeoptimizeArticle" => await coordinator.BuildHumanizedPayloadAsync(legacyTask, legacyIdea, article, cancellationToken),
             "PreQaSeoValidation" => await coordinator.BuildStrictQaPayloadAsync(legacyTask, legacyIdea, article, cancellationToken),
             "QaScoring" => await coordinator.BuildLightQaPayloadAsync(legacyTask, legacyIdea, article, cancellationToken),
-            _ => await coordinator.BuildDefaultPayloadAsync(legacyTask, legacyIdea, article, cancellationToken)
+            _ => throw new InvalidOperationException($"Unsupported article capability '{actionDefinition.CapabilityKey}'.")
         };
+
+        if (payload is QaReportResult qa && !qa.IsQualitySufficient)
+            throw new InvalidOperationException($"Article QA blocked: {string.Join("; ", qa.HardRuleFailures)}");
+        if (payload is LightQaResult lightQa && !lightQa.Passed)
+            throw new InvalidOperationException($"Article QA blocked: {lightQa.Summary}");
 
         return new NewWorkflowDispatchResult(payload, article);
     }
@@ -202,14 +242,39 @@ public sealed class NewWorkflowRuntimeDispatcher
         };
     }
 
+    /// <summary>Restores writer research fields from the approved idea snapshot.</summary>
+    /// <param name="idea">The immutable approved topic direction and research snapshot.</param>
+    /// <returns>A compatibility idea preserving camelCase frozen snapshots and PascalCase candidate snapshots.</returns>
+    /// <remarks>Do not silently replace a research keyword with the full display title. Legacy snapshots are hydrated separately.</remarks>
     private static ContentIdea BuildCompatIdea(IdeaRecord idea)
     {
+        using var snapshot = JsonDocument.Parse(string.IsNullOrWhiteSpace(idea.IdeaSnapshotJson) ? "{}" : idea.IdeaSnapshotJson);
+        var root = snapshot.RootElement;
+        bool TryRead(string name, out JsonElement value) => root.TryGetProperty(name, out value)
+            || root.TryGetProperty(char.ToUpperInvariant(name[0]) + name[1..], out value);
+        string ReadString(string name, string fallback = "") => TryRead(name, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString() ?? fallback : fallback;
+        var secondaryJson = ReadString("secondaryKeywordsJson");
+        if (string.IsNullOrWhiteSpace(secondaryJson))
+            secondaryJson = TryRead("secondaryKeywords", out var secondary) && secondary.ValueKind == JsonValueKind.Array ? secondary.GetRawText() : "[]";
+        var sourcesJson = ReadString("sourceSummaryJson");
+        if (string.IsNullOrWhiteSpace(sourcesJson))
+        {
+            var findings = TryRead("supportingFindings", out var sources) && sources.ValueKind == JsonValueKind.Array
+                ? JsonSerializer.Deserialize<List<ResearchFinding>>(sources.GetRawText(), new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? [] : [];
+            sourcesJson = JsonSerializer.Serialize(findings.Take(8).Select(ResearchEvidenceHandoff.ToWriterSummary));
+        }
         return new ContentIdea
         {
             Id = ExtractLegacyIdeaId(idea),
             SiteId = idea.SiteId ?? Guid.Empty,
             Title = idea.IdeaTitle,
-            PrimaryKeyword = idea.IdeaTitle,
+            PrimaryKeyword = ReadString("primaryKeyword"),
+            SecondaryKeywordsJson = secondaryJson,
+            SourceSummaryJson = sourcesJson,
+            Summary = ReadString("summary", idea.ReaderProblem),
+            ContentType = ReadString("contentType", "LongFormBlogArticle"),
+            SlugSuggestion = ReadString("slugSuggestion"),
             SearchIntent = idea.SearchIntent,
             AudiencePainPoint = idea.ReaderProblem,
             AudienceGoal = idea.AudienceType,
@@ -245,6 +310,19 @@ public sealed class NewWorkflowRuntimeDispatcher
             : string.Join('-', title.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries));
     }
 
+    /// <summary>Writes and persists a model draft only when generation succeeds.</summary>
+    /// <remarks>Synthetic templates are diagnostic output and must not enter the persisted DraftArticle stream.</remarks>
+    /// <param name="coordinator">The existing article generation pipeline.</param>
+    /// <param name="workflowRun">The run receiving the draft artifact.</param>
+    /// <param name="actionRun">The current writer action instance.</param>
+    /// <param name="actionDefinition">The writer capability definition.</param>
+    /// <param name="idea">The approved idea record.</param>
+    /// <param name="article">The article state before writing.</param>
+    /// <param name="legacyTask">The task representation consumed by the coordinator.</param>
+    /// <param name="legacyIdea">The approved direction and preserved research fields.</param>
+    /// <param name="cancellationToken">Cancels writing and persistence.</param>
+    /// <returns>A structured, non-synthetic draft.</returns>
+    /// <exception cref="InvalidOperationException">Writer generation did not produce a real draft.</exception>
     private async Task<object> BuildAndWriteDraftAsync(
         WorkflowCoordinatorAgent coordinator,
         WorkflowDefinitionRun workflowRun,
@@ -258,6 +336,9 @@ public sealed class NewWorkflowRuntimeDispatcher
     {
         // Actually invoke the LLM writer via the coordinator's full draft pipeline
         var writtenArticle = await coordinator.ResolveArticleAsync(legacyTask, legacyIdea, cancellationToken);
+
+        if (writtenArticle.IsSynthetic)
+            throw new InvalidOperationException("Draft generation returned synthetic content. Retry with a working writer before continuing.");
 
         // Persist the enriched article back so subsequent actions in this dispatch cycle get real content
         // Update the dispatch result to carry the enriched article

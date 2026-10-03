@@ -95,13 +95,15 @@
 
             <div class="panel-card">
                 <h3>Scoring</h3>
+                <p>These scores are estimates. Measured search volume, keyword difficulty, and trends are unknown.</p>
                 <div class="score-list">
-                    <div class="score-item"><span>Overall</span><strong>@Idea.OverallScore</strong></div>
-                    <div class="score-item"><span>SEO</span><strong>@Idea.SeoOpportunityScore</strong></div>
+                    <div class="score-item"><span>Compatibility score (not reviewed overall)</span><strong>@Idea.OverallScore</strong></div>
+                    <div class="score-item"><span>Measured SEO opportunity</span><strong>Unknown</strong></div>
                     <div class="score-item"><span>Monetization</span><strong>@Idea.MonetizationFitScore</strong></div>
-                    <div class="score-item"><span>Trend</span><strong>@Idea.TrendScore</strong></div>
-                    <div class="score-item"><span>Competition</span><strong>@Idea.CompetitionScore</strong></div>
+                    <div class="score-item"><span>Audience fit (estimate)</span><strong>@Idea.TrendScore</strong></div>
+                    <div class="score-item"><span>Measured keyword competition</span><strong>Unknown</strong></div>
                 </div>
+                <p>For versioned review reasons, score ranges and provisional ordering, open <a href="/idea-pipeline">Idea Pipeline</a>. Historical scores retain their original scale.</p>
                 <div class="tag-row top-gap">
                     @if (Idea.Evergreen)
                     {

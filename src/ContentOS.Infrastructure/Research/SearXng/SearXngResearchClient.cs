@@ -1,3 +1,4 @@
+using ContentOS.Infrastructure.Workflow;
 using System.Collections.Concurrent;
 using System.Text.Json;
 using ContentOS.Infrastructure.Research.Abstractions;
@@ -19,6 +20,12 @@ public class SearXngResearchClient : IResearchSearchClient
         _extractor = extractor;
     }
 
+    /// <summary>Searches indexed sources with domain constraints; failures remain distinct from valid empty results.</summary>
+    /// <param name="query">Retrieval query, never logged.</param><param name="searchDepth">Extraction budget mode.</param>
+    /// <param name="maxResults">Maximum results.</param><param name="includeDomains">Allowed domain boundaries.</param>
+    /// <param name="excludeDomains">Excluded domain boundaries.</param><param name="cancellationToken">Caller cancellation.</param>
+    /// <returns>Collected results, possibly empty on a valid response.</returns>
+    /// <exception cref="HttpRequestException">Provider rejected, failed, or returned an invalid response; competition is unknown.</exception>
     public async Task<IReadOnlyCollection<SearchResult>> SearchAsync(
         string query,
         string searchDepth = "basic",
@@ -33,11 +40,8 @@ public class SearXngResearchClient : IResearchSearchClient
         var pageno = searchDepth == "advanced" ? 1 : 1;
         var url = $"{searxngUrl}/search?q={Uri.EscapeDataString(query)}&format=json&pageno={pageno}";
 
-        // Reddit/forum bias: add reddit engine when query hints at pain points or opinions
-        if (QueryWantsForumResults(query))
-        {
-            url += "&engines=google,bing,duckduckgo,brave,startpage,reddit";
-        }
+        // Keep the operator's configured engine set. Domain queries/filters express forum intent
+        // without replacing a working configured engine with unavailable or CAPTCHA-blocked ones.
 
         try
         {
@@ -45,9 +49,8 @@ public class SearXngResearchClient : IResearchSearchClient
 
             if (!response.IsSuccessStatusCode)
             {
-                var body = await response.Content.ReadAsStringAsync(cancellationToken);
-                _logger.LogWarning("SearXNG search failed with status {StatusCode}: {Body}", response.StatusCode, body);
-                return [];
+                _logger.LogWarning("Research search was rejected (HTTP {StatusCode}). Check the local search provider before retrying; no results were accepted. Outcome={Outcome}", (int)response.StatusCode, "http-failure");
+                throw new HttpRequestException("Research search unavailable: provider rejected the request.");
             }
 
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -55,11 +58,11 @@ public class SearXngResearchClient : IResearchSearchClient
 
             if (!document.RootElement.TryGetProperty("results", out var resultsElement) || resultsElement.ValueKind != JsonValueKind.Array)
             {
-                return [];
+                throw new HttpRequestException("Research search unavailable: invalid provider response.");
             }
 
             // Phase 1: Collect and deduplicate raw results
-            var rawResults = CollectResults(resultsElement, excludeDomains);
+            var rawResults = CollectResults(resultsElement, includeDomains, excludeDomains);
 
             // Phase 2: Score and rank with freshness + domain weighting + answer relevance
             var scored = rawResults
@@ -86,14 +89,15 @@ public class SearXngResearchClient : IResearchSearchClient
 
             return finalResults;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "SearXNG search threw an exception for query: {Query}", query);
-            return [];
+            WorkflowDiagnostics.LogFailure(_logger, ex, "Research search failed. No search results were accepted.");
+            throw new HttpRequestException("Research search unavailable; no keyword measurement can be inferred.");
         }
     }
 
-    private List<SearXngRawResult> CollectResults(JsonElement resultsElement, IReadOnlyCollection<string>? excludeDomains)
+    private List<SearXngRawResult> CollectResults(JsonElement resultsElement, IReadOnlyCollection<string>? includeDomains, IReadOnlyCollection<string>? excludeDomains)
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var results = new List<SearXngRawResult>();
@@ -108,7 +112,9 @@ public class SearXngResearchClient : IResearchSearchClient
             if (!seen.Add(resultUrl)) continue;
 
             // Domain exclusion
-            if (excluded.Any(d => host.EndsWith(d, StringComparison.OrdinalIgnoreCase))) continue;
+            if (!Uri.TryCreate(resultUrl,UriKind.Absolute,out var validUri) || validUri.Scheme is not ("http" or "https")) continue;
+            if (includeDomains is { Count: > 0 } && !includeDomains.Any(d => ResearchEvidenceHandoff.MatchesDomain(resultUrl,d))) continue;
+            if (excluded.Any(d => ResearchEvidenceHandoff.MatchesDomain(resultUrl,d))) continue;
 
             var publishedDate = item.TryGetProperty("publishedDate", out var pd) && pd.ValueKind == JsonValueKind.String
                 ? pd.GetString() : null;
@@ -199,7 +205,7 @@ public class SearXngResearchClient : IResearchSearchClient
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "Content extraction failed for {Url}, keeping snippet", r.Url);
+                WorkflowDiagnostics.LogFailure(_logger, ex, "Source extraction failed. Only the search snippet remains; full source text was not collected.", WorkflowDiagnostics.SourceId(r.Url));
             }
         });
 

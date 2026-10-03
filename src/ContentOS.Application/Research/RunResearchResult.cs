@@ -9,4 +9,5 @@ public class RunResearchResult
     public int IdeasSaved { get; set; }
     public int DuplicatesSkipped { get; set; }
     public List<string> SavedTitles { get; set; } = [];
+    public string? ShortfallReason { get; set; }
 }

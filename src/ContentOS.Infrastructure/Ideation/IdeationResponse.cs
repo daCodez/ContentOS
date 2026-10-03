@@ -1,3 +1,5 @@
+using ContentOS.Application.Research;
+
 namespace ContentOS.Infrastructure.Ideation;
 
 public sealed class IdeationResponse
@@ -19,4 +21,7 @@ public sealed class IdeationDto
     public bool Seasonal { get; set; } = false;
     public string TopicType { get; set; } = "Problem";
     public string SpecificityTag { get; set; } = "general";
+    /// <summary>URLs selected only from supplied collected evidence; unknown URLs must never create source records.</summary>
+    public IList<string> SupportingSourceUrls { get; set; } = new List<string>();
+    public EditorialAssessmentResponse? EditorialAssessment { get; set; }
 }

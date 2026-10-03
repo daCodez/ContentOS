@@ -6,5 +6,6 @@ public enum WorkflowDefinitionRunStatus
     InProgress = 2,
     Completed = 3,
     Failed = 4,
-    Pending = 5
+    Pending = 5,
+    AwaitingHumanApproval = 6
 }

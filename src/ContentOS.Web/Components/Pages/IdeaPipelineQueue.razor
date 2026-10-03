@@ -8,6 +8,10 @@
 @inject NavigationManager Navigation
 
 <PageTitle>Idea Pipeline | ContentOS</PageTitle>
+<style>
+    .scoring-ideas-table td { vertical-align: top; }
+    .scoring-ideas-table .score-cell { min-width: 300px; max-width: 400px; white-space: normal; overflow-wrap: anywhere; }
+</style>
 
 <div class="mission-control-container kingadmin-dashboard">
     <div class="crumb-row">
@@ -22,7 +26,7 @@
             <p class="page-subtitle">Review scored ideas, approve the winners, and launch article workflows from clean idea inputs.</p>
         </div>
         <div class="actions-group">
-            <div style="display:flex; align-items:center; gap:0.5rem;">
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:0.5rem; max-width:100%;">
                 <input type="text" @bind="NicheInput" placeholder="Niche (e.g. personal finance, travel, fitness)" 
                        style="padding:0.4rem 0.75rem; border:1px solid var(--border, #ddd); border-radius:4px; font-size:0.85rem; width:280px;" />
                 <button class="btn-primary" @onclick="GenerateIdeasAsync" disabled="@IsGenerating">@(IsGenerating ? "Generating..." : "Generate Ideas")</button>
@@ -36,7 +40,8 @@
 
     <section class="dashboard-card compact-card">
         <div class="widget-title">Idea Queue</div>
-        <table class="architect-table compact-table">
+        <div style="max-width:100%; overflow-x:auto;" tabindex="0" aria-label="Idea scores table, scroll horizontally on small screens">
+        <table class="architect-table compact-table scoring-ideas-table" style="table-layout:auto;">
             <thead>
                 <tr>
                     <th>Idea</th>
@@ -63,7 +68,36 @@
                             </td>
                             <td>@idea.ReaderProblem</td>
                             <td>@idea.AudienceType</td>
-                            <td>@idea.PriorityScore.ToString("0.00")</td>
+                            <td class="score-cell">
+                                @if(idea.ReviewedRanking is { } ranking)
+                                {
+                                    @if(ranking.LowerBound.HasValue&&ranking.UpperBound.HasValue)
+                                    {<strong>@ranking.LowerBound?.ToString("0.##")–@ranking.UpperBound?.ToString("0.##")</strong>}
+                                    else
+                                    {<strong>Unassessed</strong>}
+                                    <div class="row-meta">@ranking.Status · @ranking.KnownWeight% assessed</div>
+                                    <details><summary>Score reasons and weights</summary>
+                                        <p>Proposed configurable defaults: editorial value 60%, SEO opportunity 40%. Defaults remain provisional; this assessment's actual weights appear below. Separate model review may use the same provider. Ordered by evidenced lower bound; overlapping ranges do not establish a winner.</p>
+                                        @foreach(var problem in ranking.Problems??[])
+                                        {<p>@problem</p>}
+                                        @foreach(var dimension in (ranking.Dimensions??[]).Where(d=>d is not null))
+                                        {
+                                            <p><strong>@dimension.Key</strong>: @(dimension.Rating?.ToString("0.##")??"Unknown") / 4 · weight @(ranking.Weights is not null&&dimension.Key is not null&&ranking.Weights.TryGetValue(dimension.Key,out var weight)?weight.ToString("0.##"):"Unknown")% — @dimension.Reason</p>
+                                            @foreach(var evidence in (dimension.Evidence??[]).Where(e=>e is not null))
+                                            {
+                                                <p>@evidence.ExactQuote
+                                                @if(Uri.TryCreate(evidence.SourceUrl,UriKind.Absolute,out var citationUri)&&citationUri.Scheme is "http" or "https"&&string.IsNullOrEmpty(citationUri.UserInfo))
+                                                {<a href="@evidence.SourceUrl">Source</a>}
+                                                </p>
+                                            }
+                                        }
+                                    </details>
+                                }
+                                else
+                                {
+                                    <span>@idea.PriorityScore.ToString("0.00")</span><div class="row-meta">Historical score · original scale</div>
+                                }
+                            </td>
                             <td>@idea.Status</td>
                             <td class="action-cell">
                                 @if (idea.Status.Equals("Pending", StringComparison.OrdinalIgnoreCase))
@@ -81,6 +115,7 @@
                 }
             </tbody>
         </table>
+        </div>
     </section>
 </div>
 

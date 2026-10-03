@@ -23,4 +23,10 @@
     <ProjectReference Include="..\..\src\ContentOS.Domain\ContentOS.Domain.csproj" />
     <ProjectReference Include="..\..\src\ContentOS.Infrastructure\ContentOS.Infrastructure.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Update="Fixtures\RevisedIdeaWorkflow.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Fixtures\IndependentRankingWorkflow.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Fixtures\RevisedArticleWorkflow.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup><None Update="Fixtures\HipIdeationSelectionReplay.json" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
 </Project>

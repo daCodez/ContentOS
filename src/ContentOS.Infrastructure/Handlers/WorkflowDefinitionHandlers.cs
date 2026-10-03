@@ -511,6 +511,7 @@ public class GetIdeaQueueQueryHandler : IRequestHandler<GetIdeaQueueQuery, IEnum
                 x.SeoPotential,
                 x.Difficulty,
                 x.PriorityScore,
+                x.IdeaSnapshotJson,
                 Status = x.Status.ToString(),
                 x.CreatedUtc,
                 x.ApprovedUtc
@@ -533,10 +534,21 @@ public class GetIdeaQueueQueryHandler : IRequestHandler<GetIdeaQueueQuery, IEnum
                 SeoPotential = x.SeoPotential,
                 Difficulty = x.Difficulty,
                 PriorityScore = x.PriorityScore,
+                ReviewedRanking = ReadReviewedRanking(x.IdeaSnapshotJson),
                 Status = x.Status,
                 CreatedUtc = x.CreatedUtc,
                 ApprovedUtc = x.ApprovedUtc
-            }).ToList();
+            }).OrderByDescending(x=>x.ReviewedRanking is not null).ThenByDescending(x=>x.PriorityScore).ThenByDescending(x=>x.CreatedUtc).ToList();
+    }
+    private static ContentOS.Application.Research.IdeaRankingResult? ReadReviewedRanking(string json)
+    {
+        try
+        {
+            using var snapshot=System.Text.Json.JsonDocument.Parse(json);
+            return snapshot.RootElement.TryGetProperty("reviewedRanking",out var value)&&value.ValueKind==System.Text.Json.JsonValueKind.Object
+                ?System.Text.Json.JsonSerializer.Deserialize<ContentOS.Application.Research.IdeaRankingResult>(value.GetRawText()):null;
+        }
+        catch(System.Text.Json.JsonException){return null;}
     }
 }
 

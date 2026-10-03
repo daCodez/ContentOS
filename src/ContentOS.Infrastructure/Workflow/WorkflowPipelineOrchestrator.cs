@@ -32,7 +32,8 @@ public class WorkflowPipelineOrchestrator
         {
             Id = Guid.NewGuid(),
             WorkflowDefinitionFamilyId = family.Id,
-            Version = (previousDefinition?.Version ?? 0) + 1,
+              Version = (await _dbContext.WorkflowDefinitions.Where(x => x.WorkflowDefinitionFamilyId == family.Id)
+                  .Select(x => (int?)x.Version).MaxAsync(cancellationToken) ?? 0) + 1,
             Name = draft.Name,
             Description = draft.Description,
             WorkflowType = family.WorkflowType,
@@ -48,7 +49,7 @@ public class WorkflowPipelineOrchestrator
         {
             var action = new WorkflowActionDefinition
             {
-                Id = actionDto.Id == Guid.Empty ? Guid.NewGuid() : actionDto.Id,
+                  Id = Guid.NewGuid(), // Immutable version clones use new physical IDs; source IDs remain in mutation JSON.
                 WorkflowDefinitionId = newDefinition.Id,
                 CapabilityKey = actionDto.CapabilityKey,
                 Name = actionDto.Name,
@@ -67,7 +68,7 @@ public class WorkflowPipelineOrchestrator
             {
                 _dbContext.WorkflowStepDefinitions.Add(new WorkflowStepDefinition
                 {
-                    Id = stepDto.Id == Guid.Empty ? Guid.NewGuid() : stepDto.Id,
+                      Id = Guid.NewGuid(),
                     WorkflowActionDefinitionId = action.Id,
                     CapabilityKey = stepDto.CapabilityKey,
                     Name = stepDto.Name,

@@ -279,32 +279,19 @@ public sealed class SeoAndMonetizationAgent : ISeoAndMonetizationAgent
         GeneratedLongformArticle article,
         CancellationToken cancellationToken = default)
     {
-        var toolRecommendations = new[]
-        {
-            "YNAB for hands-on zero-based budgeting and accountability",
-            "EveryDollar for a simpler guided family budgeting workflow",
-            "Free spreadsheet budget template as the lead magnet and starter tool"
-        };
-
-        var faqQuestions = new[]
-        {
-            "How much should a family of 4 spend monthly?",
-            "What is the 50/30/20 rule for families?",
-            "How do I start budgeting with no savings?"
-        };
+        cancellationToken.ThrowIfCancellationRequested();
+        // No verified offer inventory is supplied to this boundary. Retain the actual
+        // next action rather than inventing a download, affiliate offer or paid tool.
+        var toolRecommendations = Array.Empty<string>();
+        var faqQuestions = Array.Empty<string>();
 
         return Task.FromResult(new MonetizationPlanResult(
-            new[]
-            {
-                "Hook section soft CTA to download the family budget template",
-                "Mid-article tools section with problem-aware tool recommendations",
-                "End-of-article CTA to download the template and schedule a weekly money date"
-            },
-            "Download the simple family budget template, then schedule one 20-minute money date this week to use it.",
+            new[] { "Retain the article's existing next action. No verified monetization offer was supplied." },
+            article.CallToAction,
             toolRecommendations,
             faqQuestions,
-            "Tools that make this easier",
-            true));
+            article.Sections.FirstOrDefault(s => s.Heading.Contains("tool", StringComparison.OrdinalIgnoreCase))?.Heading ?? string.Empty,
+            !string.IsNullOrWhiteSpace(article.CallToAction)));
     }
 
     // === Helper: Count links in article text ===
