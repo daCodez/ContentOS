@@ -63,15 +63,7 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<ContentOS.Infrastructure.ContentOsDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     
-    if (dbContext.Database.GetPendingMigrations().Any())
-    {
-        logger.LogInformation("Applying pending migrations...");
-        await dbContext.Database.MigrateAsync();
-    }
-    else
-    {
-        await dbContext.Database.EnsureCreatedAsync();
-    }
+    await ContentOsDatabaseInitializer.InitializeAsync(dbContext);
 
     // Seed workflow templates on startup if missing
     await ContentOS.Infrastructure.WorkflowTemplateSeeder.SeedAsync(dbContext);

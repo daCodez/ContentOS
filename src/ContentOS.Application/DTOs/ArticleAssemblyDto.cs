@@ -25,6 +25,7 @@ public class ArticleAssemblyDto
     public Guid ContentIdeaId { get; set; }
     public string WorkflowStatus { get; set; } = string.Empty;
     public ArticleContentDto Content { get; set; } = new();
+    public List<ArticleImageAssetDto> ImageAssets { get; set; } = new();
 }
 
 public class ArticleContentDto

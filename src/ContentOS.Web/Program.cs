@@ -15,6 +15,10 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddHttpClient();
+builder.Services.AddScoped<ContentOS.Web.Services.ToastService>();
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<ContentOS.Web.Services.WorkflowNotificationService>();
+builder.Services.AddSingleton<ContentOS.Application.Notifications.IWorkflowNotificationService>(sp => sp.GetRequiredService<ContentOS.Web.Services.WorkflowNotificationService>());
 
 builder.Services.AddApplicationServices();
 var connectionString = builder.Configuration.GetConnectionString("ContentOs")
@@ -22,11 +26,13 @@ var connectionString = builder.Configuration.GetConnectionString("ContentOs")
 builder.Services.AddInfrastructureServices(connectionString);
 
 var app = builder.Build();
+app.MapHub<ContentOS.Web.Hubs.WorkflowHub>("/workflowHub");
 
 // Seed workflow templates on startup if missing
 using (var seedScope = app.Services.CreateScope())
 {
     var dbContext = seedScope.ServiceProvider.GetRequiredService<ContentOS.Infrastructure.ContentOsDbContext>();
+    await ContentOsDatabaseInitializer.InitializeAsync(dbContext);
     await ContentOS.Infrastructure.WorkflowTemplateSeeder.SeedAsync(dbContext);
 }
 

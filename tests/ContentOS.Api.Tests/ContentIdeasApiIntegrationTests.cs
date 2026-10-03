@@ -7,6 +7,7 @@ using System.Text.Json;
 using ContentOS.Application.Abstractions;
 using ContentOS.Application.Research;
 using ContentOS.Domain.Entities;
+using ContentOS.Domain.Enums;
 using ContentOS.Infrastructure;
 using ContentOS.Infrastructure.Research.Serp;
 using ContentOS.Infrastructure.Image;
@@ -155,21 +156,7 @@ public class ContentIdeasApiIntegrationTests : IAsyncLifetime
         {
             db.Sites.Add(new Site { Id = siteId, Name = "Approve Site", Domain = "approve.com", Niche = "Testing" });
             db.ContentIdeas.Add(new ContentIdea { Id = ideaId, SiteId = siteId, Title = "Approve Me", PrimaryKeyword = "approve", Status = "NeedsReview" });
-            // WorkflowTemplate already seeded by WorkflowTemplateSeeder on startup
-        });
-        await _factory.SeedAsync(db =>
-        {
-            var template = db.WorkflowTemplates.First(t => t.Name == "LongFormBlogArticle");
-            db.WorkflowTaskTemplates.Add(new WorkflowTaskTemplate
-            {
-                Id = Guid.NewGuid(),
-                WorkflowTemplateId = template.Id,
-                Name = "Planning",
-                StageName = "Planning",
-                DisplayOrder = 1,
-                AssignedAgent = "Coordinator",
-                InstructionsTemplate = "Plan it"
-            });
+            db.IdeaRecords.Add(new IdeaRecord { Id = ideaId, SiteId = siteId, IdeaTitle = db.ContentIdeas.Local.Single(i => i.Id == ideaId).Title, ReaderProblem = "A concrete reader problem" });
         });
 
         var response = await _client.PostAsync($"/api/v1/content-ideas/{ideaId}/approve", null);
@@ -178,7 +165,15 @@ public class ContentIdeasApiIntegrationTests : IAsyncLifetime
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("isSuccessful").GetBoolean().Should().BeTrue();
         body.GetProperty("message").GetString().Should().Be("Content idea approved.");
-        body.GetProperty("data").GetProperty("workflowJobId").GetGuid().Should().NotBe(Guid.Empty);
+        var runId = body.GetProperty("data").GetProperty("workflowJobId").GetGuid();
+        await _factory.VerifyAsync(async db =>
+        {
+            var run = await db.WorkflowDefinitionRuns.FindAsync(runId);
+            run.Should().NotBeNull();
+            run!.IdeaRecordId.Should().Be(ideaId);
+            run.WorkflowType.Should().Be(WorkflowDefinitionType.Article);
+            db.WorkflowActionRuns.Any(a => a.WorkflowDefinitionRunId == runId).Should().BeTrue();
+        });
     }
 
     [Fact]
@@ -214,7 +209,7 @@ public class ContentIdeasApiIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Approve_UpdatesIdeaStatusToApproved()
+    public async Task Approve_UpdatesIdeaRecordStatusToApproved()
     {
         var ideaId = Guid.NewGuid();
         var siteId = Guid.NewGuid();
@@ -222,30 +217,18 @@ public class ContentIdeasApiIntegrationTests : IAsyncLifetime
         {
             db.Sites.Add(new Site { Id = siteId, Name = "Status Site", Domain = "status.com", Niche = "Testing" });
             db.ContentIdeas.Add(new ContentIdea { Id = ideaId, SiteId = siteId, Title = "Status Check", PrimaryKeyword = "status", Status = "NeedsReview" });
-            // WorkflowTemplate already seeded by WorkflowTemplateSeeder
-        });
-        await _factory.SeedAsync(db =>
-        {
-            var template = db.WorkflowTemplates.First(t => t.Name == "LongFormBlogArticle");
-            db.WorkflowTaskTemplates.Add(new WorkflowTaskTemplate
-            {
-                Id = Guid.NewGuid(),
-                WorkflowTemplateId = template.Id,
-                Name = "Research",
-                StageName = "Research",
-                DisplayOrder = 1,
-                AssignedAgent = "Researcher",
-                InstructionsTemplate = "Research it"
-            });
+            db.IdeaRecords.Add(new IdeaRecord { Id = ideaId, SiteId = siteId, IdeaTitle = db.ContentIdeas.Local.Single(i => i.Id == ideaId).Title, ReaderProblem = "A concrete reader problem" });
         });
 
-        await _client.PostAsync($"/api/v1/content-ideas/{ideaId}/approve", null);
+        var response = await _client.PostAsync($"/api/v1/content-ideas/{ideaId}/approve", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         await _factory.VerifyAsync(async db =>
         {
-            var idea = await db.ContentIdeas.FindAsync(ideaId);
+            var idea = await db.IdeaRecords.FindAsync(ideaId);
             idea.Should().NotBeNull();
-            idea!.Status.Should().Be("Approved");
+            idea!.Status.Should().Be(IdeaRecordStatus.Approved);
             idea.ApprovedBy.Should().Be("Eric");
             idea.ApprovedUtc.Should().NotBeNull();
         });

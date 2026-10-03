@@ -21,10 +21,6 @@ public class WorkflowTemplateSeederTests
         await _dbContext.Database.OpenConnectionAsync();
         await _dbContext.Database.EnsureCreatedAsync();
 
-        // Disable FK constraints for seed tests (the production DB has them,
-        // but in-memory SQLite enforces them during batch inserts where ordering
-        // matters and EF may not always resolve circular dependencies)
-        await _dbContext.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys = 0;");
     }
 
     [TearDown]
